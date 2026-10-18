@@ -1,0 +1,3218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>드론 비행 시뮬레이터 - 어린이 드론 체험교실</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: none;
+        }
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            display: block;
+        }
+        .hud-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .interactive-ui {
+            pointer-events: auto;
+        }
+        /* Virtual Joystick Styling */
+        .joystick-zone {
+            position: relative;
+            width: 124px;
+            height: 124px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(30, 41, 59, 0.65) 0%, rgba(15, 23, 42, 0.85) 100%);
+            border: 3px solid rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.2);
+            touch-action: none;
+        }
+        @media (min-width: 768px) and (min-height: 550px) {
+            .joystick-zone {
+                width: 148px;
+                height: 148px;
+            }
+        }
+        /* Landscape Optimization for Mobile & Tablets */
+        @media (orientation: landscape) and (max-height: 540px) {
+            .joystick-zone {
+                width: 106px;
+                height: 106px;
+            }
+            .joystick-knob {
+                width: 42px !important;
+                height: 42px !important;
+            }
+            .landscape-compact-pad {
+                padding-top: 0.35rem !important;
+                padding-bottom: 0.35rem !important;
+            }
+        }
+        /* Portrait Orientation Advisory Banner */
+        #portrait-warning {
+            display: none;
+        }
+        @media (orientation: portrait) and (max-width: 768px) {
+            #portrait-warning {
+                display: flex;
+            }
+        }
+        .joystick-crosshair-h {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            width: 80%;
+            height: 1px;
+            background: rgba(148, 163, 184, 0.3);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        .joystick-crosshair-v {
+            position: absolute;
+            left: 50%;
+            top: 10%;
+            height: 80%;
+            width: 1px;
+            background: rgba(148, 163, 184, 0.3);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+        .joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7);
+            border: 3px solid #e0f2fe;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.8);
+            transition: transform 0.04s linear;
+            pointer-events: none;
+        }
+        .joystick-knob.right-knob {
+            background: radial-gradient(circle at 35% 35%, #34d399, #059669);
+            border-color: #d1fae5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 12px rgba(52, 211, 153, 0.8);
+        }
+        .axis-label {
+            position: absolute;
+            font-size: 10px;
+            font-weight: 800;
+            color: rgba(226, 232, 240, 0.85);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+        }
+        /* Damage Flash Animation */
+        @keyframes damageFlash {
+            0% { background-color: rgba(239, 68, 68, 0.55); }
+            100% { background-color: rgba(239, 68, 68, 0); }
+        }
+        .damage-flash {
+            animation: damageFlash 0.45s ease-out forwards;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.5);
+            border-radius: 9999px;
+        }
+        .key-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 24px;
+            padding: 0 6px;
+            border-radius: 6px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-bottom-width: 3px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #f8fafc;
+            transition: all 0.1s;
+        }
+        .key-badge.active {
+            background: #0284c7;
+            border-color: #7dd3fc;
+            transform: translateY(1px);
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen overflow-hidden select-none">
+
+    <!-- 3D WebGL Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Damage Screen Overlay -->
+    <div id="damage-overlay" class="fixed inset-0 pointer-events-none z-20"></div>
+
+    <!-- Portrait Mode Rotate Advisory Banner (Landscape Optimization) -->
+    <div id="portrait-warning" class="fixed top-0 inset-x-0 z-50 bg-amber-400 text-slate-950 px-3 py-1.5 text-xs font-black items-center justify-center gap-2 shadow-lg">
+        <span>📱 원활한 양손 조이스틱 조종을 위해 화면을 <b>가로모드(Landscape)</b>로 회전해 주세요!</span>
+    </div>
+
+    <!-- ==================== LOBBY / MAIN MENU MODAL (LANDSCAPE OPTIMIZED) ==================== -->
+    <div id="lobby-screen" class="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden">
+        <div class="w-full max-w-6xl max-h-[96vh] flex flex-col bg-slate-900/95 border-2 border-sky-500/40 rounded-3xl shadow-2xl overflow-hidden">
+            <!-- Top Banner -->
+            <div class="shrink-0 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-4 py-2.5 sm:px-6 sm:py-3.5 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-2xl sm:text-3xl shadow-inner">
+                        🛸
+                    </div>
+                    <div>
+                        <span class="inline-block px-2 py-0.5 text-[11px] font-bold bg-amber-400 text-slate-950 rounded-full">
+                            초등 4~6학년 드론체험교실 · 가로모드 최적화
+                        </span>
+                        <h1 class="text-lg sm:text-2xl font-black tracking-tight text-white leading-tight">
+                            3D 드론 비행 시뮬레이터
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-lobby-sound" onclick="toggleAudio()" class="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1.5 transition">
+                        <span id="lobby-sound-icon">🔊</span> <span id="lobby-sound-text">효과음 켜짐</span>
+                    </button>
+                    <button onclick="openControlGuideModal()" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow">
+                        🎮 조종법 안내
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Content Grid (Landscape 12-Column Layout) -->
+            <div class="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-12 gap-3.5 items-stretch">
+                
+                <!-- Left Column: Pilot Registration & Mode Selection (8 cols in landscape) -->
+                <div class="col-span-12 lg:col-span-8 flex flex-col gap-3">
+                    
+                    <!-- Step 1: Pilot Nickname Input (Mandatory Validation) -->
+                    <div id="nickname-box" class="bg-slate-800/90 border-2 border-slate-700 rounded-2xl p-3 sm:p-4 transition-colors">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                            <label for="pilot-nickname" class="text-xs sm:text-sm font-extrabold text-sky-300 flex items-center gap-1.5">
+                                <span>👨‍✈️ STEP 1. 조종사 닉네임 등록 <span class="text-rose-400 font-black">(필수)</span></span>
+                            </label>
+                            <span id="current-pilot-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30">
+                                ⚠️ 미등록 (닉네임 확정 필요)
+                            </span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="pilot-nickname" type="text" maxlength="12" placeholder="예: 5학년1반홍길동 / 드론에이스"
+                                class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border-2 border-slate-700 focus:border-sky-400 focus:outline-none text-white font-bold text-xs sm:text-sm placeholder-slate-500"
+                                oninput="onNicknameInputChange(this.value)"
+                                onkeydown="if(event.key==='Enter') requestNicknameConfirm()" />
+                            <button onclick="requestNicknameConfirm()" class="shrink-0 px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm transition shadow-lg shadow-sky-500/25">
+                                닉네임 등록
+                            </button>
+                        </div>
+                        <p id="nickname-helper" class="text-[11px] text-slate-400 mt-1.5">
+                            💡 닉네임을 입력하고 <b>[닉네임 등록]</b> 버튼을 눌러 확정해야 비행을 시작할 수 있습니다.
+                        </p>
+                    </div>
+
+                    <!-- Step 2: Mode Selection -->
+                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 sm:p-4 flex-1 flex flex-col justify-between gap-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h2 class="text-xs sm:text-sm font-extrabold text-emerald-300 flex items-center gap-1.5">
+                                <span>🚀 STEP 2. 비행 모드 선택</span>
+                            </h2>
+                            <span id="unlock-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-amber-300 border border-amber-400/30">
+                                🔒 1·2·3단계를 모두 완료하면 4·5단계 스페셜 미션이 열립니다!
+                            </span>
+                        </div>
+
+                        <!-- Free Practice Mode Card (Compact Horizontal Row) -->
+                        <div class="p-3 rounded-xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-slate-900 border border-emerald-500/40 hover:border-emerald-400 transition flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-[10px] font-black bg-emerald-400 text-slate-950 rounded">기초 입문</span>
+                                    <h3 class="text-sm font-black text-white">자유 연습 & 기초 5단계 튜토리얼</h3>
+                                </div>
+                                <p class="text-[11px] text-slate-300 mt-0.5">
+                                    이륙·호버링·이동·회전·착륙 훈련과 미사일 발사 연습을 자유롭게 진행해요!
+                                </p>
+                            </div>
+                            <button onclick="startGameMode('practice', 0)" class="shrink-0 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md">
+                                연습 비행 출발 ✈️
+                            </button>
+                        </div>
+
+                        <!-- Mission Flight Mode Cards (5 Stages in Landscape Grid) -->
+                        <div class="p-3 rounded-xl bg-gradient-to-br from-indigo-950/90 to-slate-900 border border-sky-500/40">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-[10px] font-black bg-sky-400 text-slate-950 rounded">실전 도전</span>
+                                    <h3 class="text-sm font-black text-white">단계별 미션 비행 모드 (STAGE 1 ~ 5)</h3>
+                                </div>
+                                <span class="text-[11px] text-amber-300 font-bold">⚠️ 장애물·미사일 충돌 주의!</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                <!-- Mission 1 -->
+                                <button onclick="startGameMode('mission', 1)" id="card-stage-1" class="text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-sky-950/80 border border-sky-500/40 hover:border-sky-400 transition group flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-black text-sky-400">STAGE 1</span>
+                                            <span id="badge-stage-1" class="text-sm">⭕</span>
+                                        </div>
+                                        <div class="font-black text-xs text-white mt-0.5 group-hover:text-sky-300">훌라후프 통과</div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">공중의 훌라후프 6개를 순서대로 통과 후 착륙</p>
+                                    </div>
+                                    <div class="mt-2 text-[10px] font-extrabold text-sky-400 flex items-center justify-between">
+                                        <span>90초</span>
+                                        <span>출발 →</span>
+                                    </div>
+                                </button>
+
+                                <!-- Mission 2 -->
+                                <button onclick="startGameMode('mission', 2)" id="card-stage-2" class="text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-amber-950/60 border border-amber-500/40 hover:border-amber-400 transition group flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-black text-amber-400">STAGE 2</span>
+                                            <span id="badge-stage-2" class="text-sm">🌲</span>
+                                        </div>
+                                        <div class="font-black text-xs text-white mt-0.5 group-hover:text-amber-300">장애물 슬라럼</div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">숲과 바위, 경고 기둥을 피해 8개 링 통과</p>
+                                    </div>
+                                    <div class="mt-2 text-[10px] font-extrabold text-amber-400 flex items-center justify-between">
+                                        <span>100초</span>
+                                        <span>출발 →</span>
+                                    </div>
+                                </button>
+
+                                <!-- Mission 3 -->
+                                <button onclick="startGameMode('mission', 3)" id="card-stage-3" class="text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-rose-950/60 border border-rose-500/40 hover:border-rose-400 transition group flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-black text-rose-400">STAGE 3</span>
+                                            <span id="badge-stage-3" class="text-sm">🏁</span>
+                                        </div>
+                                        <div class="font-black text-xs text-white mt-0.5 group-hover:text-rose-300">드론 레이스</div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">움직이는 장애물과 고속 트랙 10코스 완주</p>
+                                    </div>
+                                    <div class="mt-2 text-[10px] font-extrabold text-rose-400 flex items-center justify-between">
+                                        <span>110초</span>
+                                        <span>출발 →</span>
+                                    </div>
+                                </button>
+
+                                <!-- Mission 4 (Locked until 1,2,3 cleared) -->
+                                <button onclick="startGameMode('mission', 4)" id="card-stage-4" class="text-left p-2.5 rounded-xl bg-slate-950/90 border border-slate-700 transition group flex flex-col justify-between relative overflow-hidden">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-black text-purple-400">STAGE 4</span>
+                                            <span id="badge-stage-4" class="text-sm">🔒</span>
+                                        </div>
+                                        <div class="font-black text-xs text-white mt-0.5 group-hover:text-purple-300">미사일 회피 비행</div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">날아오는 미사일과 장애물을 회피해 목적지 착륙</p>
+                                    </div>
+                                    <div id="footer-stage-4" class="mt-2 text-[10px] font-extrabold text-slate-500 flex items-center justify-between">
+                                        <span>1~3단계 필요</span>
+                                        <span>🔒</span>
+                                    </div>
+                                </button>
+
+                                <!-- Mission 5 (Locked until 1,2,3 cleared) -->
+                                <button onclick="startGameMode('mission', 5)" id="card-stage-5" class="text-left p-2.5 rounded-xl bg-slate-950/90 border border-slate-700 transition group flex flex-col justify-between relative overflow-hidden">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-black text-fuchsia-400">STAGE 5</span>
+                                            <span id="badge-stage-5" class="text-sm">🔒</span>
+                                        </div>
+                                        <div class="font-black text-xs text-white mt-0.5 group-hover:text-fuchsia-300">적 드론 교전</div>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">적 드론 6기 격추! 정중앙 직격 시 즉시 격추</p>
+                                    </div>
+                                    <div id="footer-stage-5" class="mt-2 text-[10px] font-extrabold text-slate-500 flex items-center justify-between">
+                                        <span>1~3단계 필요</span>
+                                        <span>🔒</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Leaderboard & Quick Control Reference (4 cols in landscape) -->
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-3">
+                    <!-- Hall of Fame Leaderboard -->
+                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 sm:p-4 flex-1 flex flex-col min-h-[190px]">
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="text-xs sm:text-sm font-extrabold text-amber-300 flex items-center gap-1.5">
+                                🏆 우리 반 드론 명예의 전당
+                            </h2>
+                            <button onclick="clearRankings()" class="text-[11px] px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-200 hover:text-white font-bold transition">
+                                기록 초기화
+                            </button>
+                        </div>
+
+                        <!-- Filter Tabs (All + Stage 1~5) -->
+                        <div class="grid grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl mb-2 text-[10px] font-bold">
+                            <button onclick="setRankFilter('ALL')" id="rank-tab-ALL" class="py-1 rounded-lg bg-sky-500 text-slate-950 font-black">전체</button>
+                            <button onclick="setRankFilter('STAGE1')" id="rank-tab-STAGE1" class="py-1 rounded-lg text-slate-400 hover:text-white">1단계</button>
+                            <button onclick="setRankFilter('STAGE2')" id="rank-tab-STAGE2" class="py-1 rounded-lg text-slate-400 hover:text-white">2단계</button>
+                            <button onclick="setRankFilter('STAGE3')" id="rank-tab-STAGE3" class="py-1 rounded-lg text-slate-400 hover:text-white">3단계</button>
+                            <button onclick="setRankFilter('STAGE4')" id="rank-tab-STAGE4" class="py-1 rounded-lg text-slate-400 hover:text-white">4단계</button>
+                            <button onclick="setRankFilter('STAGE5')" id="rank-tab-STAGE5" class="py-1 rounded-lg text-slate-400 hover:text-white">5단계</button>
+                        </div>
+
+                        <!-- Ranking List -->
+                        <div id="leaderboard-list" class="flex-1 overflow-y-auto max-h-44 space-y-1.5 pr-1">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Mini Controls Box -->
+                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 text-[11px]">
+                        <div class="font-extrabold text-sky-300 mb-1.5 flex items-center justify-between">
+                            <span>🕹️ 드론 표준 조종법 (Mode 2) & 무장</span>
+                            <span class="text-[10px] text-amber-300 font-bold">Space : 미사일 발사 🚀</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="p-2 rounded-xl bg-slate-950/90 border border-sky-500/30">
+                                <div class="font-black text-sky-400 mb-0.5">왼쪽 스틱 (W·S·A·D)</div>
+                                <div class="text-slate-300 leading-snug">
+                                    • <b>W/S</b>: 고도 상승/하강<br>
+                                    • <b>A/D</b>: 기체 좌/우 회전
+                                </div>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-950/90 border border-emerald-500/30">
+                                <div class="font-black text-emerald-400 mb-0.5">오른쪽 스틱 (방향키)</div>
+                                <div class="text-slate-300 leading-snug">
+                                    • <b>↑/↓</b>: 전진 / 후진<br>
+                                    • <b>←/→</b>: 좌/우 수평 이동
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== IN-GAME HUD ==================== -->
+    <div id="hud-screen" class="hud-layer hidden flex flex-col justify-between p-2 sm:p-3.5 landscape-compact-pad">
+        
+        <!-- Top HUD Bar -->
+        <div class="w-full flex flex-wrap items-start justify-between gap-2">
+            
+            <!-- Left: Pilot Info & Durability HP -->
+            <div class="interactive-ui bg-slate-900/85 backdrop-blur-md border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 shadow-xl min-w-[210px] sm:min-w-[255px]">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-sky-500 text-slate-950" id="hud-mode-badge">자유 연습</span>
+                        <span class="font-black text-xs sm:text-sm text-white truncate max-w-[115px]" id="hud-pilot-name">홍길동</span>
+                    </div>
+                    <span class="text-xs font-extrabold text-amber-300" id="hud-score">0점</span>
+                </div>
+
+                <!-- Drone Durability Bar -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="font-bold text-slate-300 flex items-center gap-1">
+                            🛡️ 기체 내구도 <span id="hud-crash-count" class="text-[10px] text-slate-400">(충돌 0회)</span>
+                        </span>
+                        <span id="hud-hp-text" class="font-black text-emerald-400">100%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                        <div id="hud-hp-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center: Mission / Tutorial Banner -->
+            <div class="interactive-ui flex-1 max-w-xl mx-auto bg-slate-900/90 backdrop-blur-md border-2 border-sky-500/50 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xl text-center">
+                <div class="flex items-center justify-center gap-2 text-xs font-extrabold text-sky-300 mb-0.5">
+                    <span id="hud-mission-step">STEP 1 / 5</span>
+                    <span>•</span>
+                    <span id="hud-timer" class="text-amber-300 font-mono text-xs sm:text-sm">00:00.0</span>
+                </div>
+                <div id="hud-objective-title" class="text-xs sm:text-sm font-black text-white">
+                    이륙 훈련: 왼쪽 스틱을 위로 밀어(W키) 고도 4m까지 상승하세요!
+                </div>
+                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-1.5 border border-slate-800">
+                    <div id="hud-progress-bar" class="h-full bg-sky-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Right: Camera, Sound, Restart & Exit Buttons -->
+            <div class="interactive-ui flex items-center gap-1.5">
+                <button onclick="switchCameraMode()" class="px-2.5 py-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-xs font-extrabold text-sky-300 shadow-lg flex items-center gap-1 transition active:scale-95" title="카메라 시점 변경 (C키)">
+                    📷 <span id="hud-cam-label" class="hidden sm:inline">3인칭 추적</span>
+                </button>
+                <button onclick="toggleAudio()" class="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-xs shadow-lg transition active:scale-95" id="hud-sound-btn" title="소리 켜기/끄기">
+                    🔊
+                </button>
+                <button onclick="restartCurrentMode()" class="px-2.5 py-2 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition active:scale-95" title="현재 코스 처음부터 다시 시작 (R키)">
+                    🔄 재시작
+                </button>
+                <button onclick="returnToLobby()" class="px-2.5 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-black text-xs shadow-lg transition active:scale-95">
+                    🏠 대기실
+                </button>
+            </div>
+        </div>
+
+        <!-- Middle HUD Area: Left Telemetry & Right Mini-Map + Toast Alert -->
+        <div class="w-full flex-1 flex items-center justify-between pointer-events-none my-1 relative">
+            
+            <!-- Left Altitude & Speed Gauge -->
+            <div class="bg-slate-900/75 backdrop-blur border border-slate-700/80 rounded-2xl p-2 flex flex-col items-center gap-1 w-14 sm:w-16">
+                <div class="text-[10px] font-extrabold text-sky-300">고도(m)</div>
+                <div class="relative w-3.5 h-24 sm:h-28 bg-slate-950 rounded-full border border-slate-700 overflow-hidden flex flex-col justify-end p-0.5">
+                    <div id="altitude-safe-zone" class="w-full bg-emerald-400/20 absolute left-0" style="bottom: 15%; height: 45%;"></div>
+                    <div id="hud-altitude-fill" class="w-full bg-gradient-to-t from-sky-500 to-cyan-300 rounded-full transition-all duration-75" style="height: 0%"></div>
+                </div>
+                <div id="hud-altitude-val" class="text-xs font-black text-white font-mono">0.0m</div>
+                <div class="w-full border-t border-slate-700/80 pt-1 text-center">
+                    <div class="text-[9px] font-bold text-emerald-300">속력</div>
+                    <div id="hud-speed-val" class="text-[11px] font-black text-white font-mono">0km/h</div>
+                </div>
+            </div>
+
+            <!-- Center Floating Toast Feedback -->
+            <div id="hud-toast" class="hidden absolute top-2 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl bg-slate-900/95 border-2 border-amber-400 text-white font-black text-xs sm:text-sm shadow-2xl transition-all">
+                ⭕ 훌라후프 통과! +200점
+            </div>
+
+            <!-- Right Radar Mini-Map -->
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-700/80 rounded-2xl p-1.5 flex flex-col items-center gap-1">
+                <div class="text-[10px] font-extrabold text-emerald-300 flex items-center gap-1">
+                    <span>🧭 레이더 맵</span>
+                </div>
+                <canvas id="minimap-canvas" width="98" height="98" class="rounded-xl bg-slate-950 border border-slate-700"></canvas>
+                <div id="hud-target-dist" class="text-[10px] font-bold text-amber-300">목표 거리: 0m</div>
+            </div>
+        </div>
+
+        <!-- Bottom HUD Bar: Dual Virtual Joysticks, Fire Button & Keyboard Visualizer -->
+        <div class="w-full flex items-end justify-between gap-2 pb-0.5">
+            
+            <!-- Left Stick: Throttle (Up/Down) & Yaw (Rotate L/R) -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-[10px] font-extrabold text-sky-300">
+                    왼쪽: 고도(W/S) · 회전(A/D)
+                </div>
+                <div id="joystick-left" class="joystick-zone interactive-ui">
+                    <div class="joystick-crosshair-h"></div>
+                    <div class="joystick-crosshair-v"></div>
+                    <span class="axis-label top-1 left-1/2 -translate-x-1/2 text-sky-300">▲ 상승(W)</span>
+                    <span class="axis-label bottom-1 left-1/2 -translate-x-1/2 text-sky-300">▼ 하강(S)</span>
+                    <span class="axis-label left-1 top-1/2 -translate-y-1/2">◀ 좌(A)</span>
+                    <span class="axis-label right-1 top-1/2 -translate-y-1/2">우(D) ▶</span>
+                    <div id="knob-left" class="joystick-knob"></div>
+                </div>
+            </div>
+
+            <!-- Center Bottom: Missile Fire Button + Hover Brake + Keyboard Visualizer -->
+            <div class="flex flex-col items-center gap-1.5 interactive-ui">
+                <!-- Action Buttons Row (Works on Mobile, Tablet & PC) -->
+                <div class="flex items-center gap-2">
+                    <button onclick="firePlayerMissile()" class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 active:scale-95 text-white font-black text-xs sm:text-sm shadow-lg shadow-rose-500/40 border-2 border-rose-300 flex items-center gap-1.5 transition">
+                        🚀 미사일 발사 <span class="hidden sm:inline text-[11px] bg-black/30 px-1.5 py-0.5 rounded">(Space)</span>
+                    </button>
+                    <button onclick="emergencyLand()" class="px-3 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-1 transition">
+                        🛑 호버링 정지 <span class="hidden sm:inline text-[11px] bg-black/15 px-1.5 py-0.5 rounded">(Shift)</span>
+                    </button>
+                </div>
+
+                <!-- Keyboard Visual Helper (Desktop/Landscape Tablet) -->
+                <div class="hidden lg:flex items-center gap-5 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-2xl">
+                    <!-- WASD Visualizer -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex flex-col items-center gap-0.5">
+                            <span id="key-w" class="key-badge">W</span>
+                            <div class="flex gap-0.5">
+                                <span id="key-a" class="key-badge">A</span>
+                                <span id="key-s" class="key-badge">S</span>
+                                <span id="key-d" class="key-badge">D</span>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-sky-300 font-bold">고도/회전</span>
+                    </div>
+                    <!-- Arrow Keys Visualizer -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex flex-col items-center gap-0.5">
+                            <span id="key-up" class="key-badge">↑</span>
+                            <div class="flex gap-0.5">
+                                <span id="key-left" class="key-badge">←</span>
+                                <span id="key-down" class="key-badge">↓</span>
+                                <span id="key-right" class="key-badge">→</span>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-emerald-300 font-bold">전후/좌우</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Stick: Pitch (Forward/Back) & Roll (Strafe L/R) -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-extrabold text-emerald-300">
+                    오른쪽: 전후(↑/↓) · 좌우(←/→)
+                </div>
+                <div id="joystick-right" class="joystick-zone interactive-ui" style="border-color: rgba(52, 211, 153, 0.5);">
+                    <div class="joystick-crosshair-h"></div>
+                    <div class="joystick-crosshair-v"></div>
+                    <span class="axis-label top-1 left-1/2 -translate-x-1/2 text-emerald-300">▲ 전진(↑)</span>
+                    <span class="axis-label bottom-1 left-1/2 -translate-x-1/2 text-emerald-300">▼ 후진(↓)</span>
+                    <span class="axis-label left-1 top-1/2 -translate-y-1/2">◀ 좌(←)</span>
+                    <span class="axis-label right-1 top-1/2 -translate-y-1/2">우(→) ▶</span>
+                    <div id="knob-right" class="joystick-knob right-knob"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== RESULT / CRASH / NICKNAME / GUIDE MODAL ==================== -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        
+        <!-- Nickname Confirmation Modal -->
+        <div id="nickname-confirm-modal" class="hidden w-full max-w-md bg-slate-900 border-2 border-sky-400 rounded-3xl p-6 text-center shadow-2xl">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-3xl mb-3">
+                👨‍✈️
+            </div>
+            <h2 class="text-xl font-black text-white">조종사 닉네임 확인</h2>
+            <p class="text-sm text-slate-300 mt-3 leading-relaxed">
+                입력하신 <span id="confirm-nickname-text" class="px-2.5 py-0.5 rounded-lg bg-sky-500/20 border border-sky-400 text-sky-300 font-black text-base">홍길동</span> 닉네임으로<br>
+                정말 진행하시겠습니까?
+            </p>
+            <p class="text-xs text-slate-400 mt-2">
+                ※ 확정된 닉네임으로 비행 점수 및 단계별 달성 기록이 저장됩니다.
+            </p>
+            <div class="mt-5 flex gap-3">
+                <button onclick="cancelNicknameConfirm()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+                    다시 입력
+                </button>
+                <button onclick="finalizeNicknameConfirm()" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-sm transition shadow-lg shadow-sky-500/30">
+                    네, 진행합니다!
+                </button>
+            </div>
+        </div>
+
+        <!-- Validation / Alert Notice Modal -->
+        <div id="notice-modal" class="hidden w-full max-w-md bg-slate-900 border-2 border-amber-400 rounded-3xl p-6 text-center shadow-2xl">
+            <div id="notice-modal-icon" class="w-14 h-14 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-3xl mb-3">
+                ⚠️
+            </div>
+            <h2 id="notice-modal-title" class="text-xl font-black text-amber-300">안내</h2>
+            <p id="notice-modal-desc" class="text-sm text-slate-200 mt-2 leading-relaxed">
+                닉네임을 먼저 입력해 주세요!
+            </p>
+            <div class="mt-5">
+                <button onclick="closeNoticeModal()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition">
+                    확인
+                </button>
+            </div>
+        </div>
+
+        <!-- Crash / Destruction Modal -->
+        <div id="crash-modal" class="hidden w-full max-w-md bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-4xl mb-3">
+                💥
+            </div>
+            <h2 id="crash-modal-title" class="text-2xl font-black text-rose-400">드론 기체 파손!</h2>
+            <p id="crash-modal-desc" class="text-sm text-slate-300 mt-2 leading-relaxed">
+                나무나 바위, 장애물에 반복해서 부딪혀 프로펠러와 기체가 손상되었습니다.<br>
+                안전 수칙에 따라 기체를 수리하고 처음 위치에서 다시 출발합니다!
+            </p>
+            <div class="mt-4 p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-amber-300 text-left">
+                💡 <b>안전 비행 팁:</b> 장애물 근처에서는 오른쪽 스틱을 살짝만 기울여 속도를 줄이고, 위기 상황에서는 <b>호버링 정지(Space)</b>를 활용하세요!
+            </div>
+            <div class="mt-5 flex gap-3">
+                <button onclick="returnToLobby()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition">
+                    대기실로
+                </button>
+                <button onclick="restartCurrentMode()" class="flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm transition shadow-lg shadow-rose-500/30">
+                    🛠️ 수리 후 다시 시작
+                </button>
+            </div>
+        </div>
+
+        <!-- Mission Complete Modal -->
+        <div id="clear-modal" class="hidden w-full max-w-md bg-slate-900 border-2 border-emerald-400 rounded-3xl p-6 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-4xl mb-3">
+                🏆
+            </div>
+            <span id="clear-badge" class="px-3 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs">STAGE CLEAR</span>
+            <h2 id="clear-title" class="text-2xl font-black text-white mt-2">미션 비행 성공!</h2>
+            <p id="clear-subtitle" class="text-xs text-slate-300 mt-1">안전하게 모든 코스를 통과하고 착륙했습니다!</p>
+
+            <!-- Score Breakdown -->
+            <div class="my-4 p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-400">조종사 닉네임</span>
+                    <span id="clear-pilot" class="font-black text-sky-300">홍길동</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">비행 소요 시간</span>
+                    <span id="clear-time" class="font-bold text-white font-mono">00:25.4</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">남은 기체 내구도 보너스</span>
+                    <span id="clear-hp-bonus" class="font-bold text-emerald-400">+500점 (100%)</span>
+                </div>
+                <div class="border-t border-slate-800 pt-2 flex justify-between text-base">
+                    <span class="font-extrabold text-amber-300">최종 획득 점수</span>
+                    <span id="clear-total-score" class="font-black text-amber-400 text-lg">2,450점</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2.5">
+                <button onclick="returnToLobby()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition">
+                    랭킹 보드 확인
+                </button>
+                <button onclick="restartCurrentMode()" class="flex-1 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-sm transition">
+                    다시 도전
+                </button>
+                <button id="btn-next-stage" onclick="goNextStage()" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm transition shadow-lg shadow-emerald-500/25">
+                    다음 단계 →
+                </button>
+            </div>
+        </div>
+
+        <!-- Control Guide Modal -->
+        <div id="guide-modal" class="hidden w-full max-w-2xl bg-slate-900 border-2 border-sky-400 rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                    🎮 드론 조종기 원리 및 안전 가이드
+                </h2>
+                <button onclick="closeAllModals()" class="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm">
+                    닫기 ✕
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+                <div class="p-4 rounded-2xl bg-slate-950 border border-sky-500/40">
+                    <div class="font-black text-sky-400 text-base mb-2">1. 왼쪽 조종 스틱 (스로틀 & 러더)</div>
+                    <ul class="space-y-1.5 text-slate-300">
+                        <li>• <b>위로 밀기 (W키):</b> 프로펠러 회전수가 빨라져 드론이 <b>상승(이륙)</b>합니다.</li>
+                        <li>• <b>아래로 당기기 (S키):</b> 드론이 천천히 <b>하강(착륙)</b>합니다.</li>
+                        <li>• <b>왼쪽/오른쪽 (A/D키):</b> 드론의 앞머리(기수) 방향을 <b>좌/우로 회전(Yaw)</b>합니다.</li>
+                    </ul>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40">
+                    <div class="font-black text-emerald-400 text-base mb-2">2. 오른쪽 조종 스틱 (엘리베이터 & 에일러론)</div>
+                    <ul class="space-y-1.5 text-slate-300">
+                        <li>• <b>위로 밀기 (↑키):</b> 드론이 바라보는 방향으로 <b>전진(Pitch)</b>합니다.</li>
+                        <li>• <b>아래로 당기기 (↓키):</b> 드론이 뒤쪽으로 <b>후진</b>합니다.</li>
+                        <li>• <b>왼쪽/오른쪽 (←/→키):</b> 드론이 게걸음처럼 <b>좌/우로 수평 이동(Roll)</b>합니다.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-xs sm:text-sm text-amber-200 space-y-1">
+                <div class="font-black text-amber-300">⚠️ 드론 파손 및 미사일 교전 안내</div>
+                <p>• 비행 중 <b>나무, 바위, 훌라후프 테두리, 날아오는 적 미사일</b>에 부딪히면 기체 내구도가 깎입니다.</p>
+                <p>• <b>미사일 발사 (Space 또는 발사 버튼):</b> 드론이 현재 바라보는 방향과 현재 고도로 미사일이 발사됩니다.</p>
+                <p>• <b>부위별 피격 판정:</b> 적 드론의 <b>정중앙 코어</b>를 맞히면 단 한 발에 <b>즉시 격추(100% 피해)</b>되며, <b>주변부(프로펠러 가드)</b>를 맞히면 50% 피해를 주어 추가 공격이 필요합니다.</p>
+            </div>
+            <div class="mt-5 text-right">
+                <button onclick="closeAllModals()" class="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-sm">
+                    확인했어요!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /***********************************************************************
+         * 1. STATE & STORAGE MANAGEMENT
+         * - 새로고침 시 모든 내용이 초기화되도록 페이지 로드 시 로컬스토리지를 초기화하고,
+         *   세션 중에는 로컬스토리지에 학생들의 랭킹 기록을 저장·정렬합니다.
+         ***********************************************************************/
+        const STORAGE_KEY = 'DRONE_CLASSROOM_RANKINGS_V1';
+
+        // 새로고침 시 초기화 요구사항 반영: 페이지 최초 로드 시 이전 로컬스토리지 데이터 초기화
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            console.warn('localStorage access warning:', e);
+        }
+
+        const appState = {
+            pilotName: '',
+            pilotConfirmed: false,
+            pendingNickname: '',
+            pendingStartRequest: null,
+            clearedStages: { 1: false, 2: false, 3: false, 4: false, 5: false },
+            pilotProgressMap: {}, // Tracks cleared stages per pilot nickname
+            mode: 'lobby', // 'lobby', 'practice', 'mission'
+            stage: 0,      // 0: practice, 1: Hoop, 2: Slalom, 3: Race, 4: Missile Evade, 5: Drone Combat
+            rankFilter: 'ALL',
+            audioEnabled: true,
+            cameraMode: 0, // 0: Chase Cam, 1: FPV Cam, 2: High Angle Cam
+            isPaused: false,
+            startTime: 0,
+            elapsedTime: 0,
+            timeLimit: 90,
+            score: 0,
+            // Tutorial State (Free Practice Mode)
+            tutorialStep: 1, // 1: Takeoff, 2: Hover, 3: Move to Waypoint, 4: Yaw Rotate, 5: Land, 6: Free Flight
+            hoverTimer: 0,
+            yawAccumulated: 0,
+            // Mission Hoop & Combat State
+            currentHoopIndex: 0,
+            totalHoops: 0,
+            allHoopsCleared: false,
+            enemiesRemaining: 0,
+            totalEnemies: 0,
+            lastFireTime: 0
+        };
+
+        // Drone Physics & Durability State
+        const droneState = {
+            pos: new THREE.Vector3(0, 0.35, 0),
+            vel: new THREE.Vector3(0, 0, 0),
+            yaw: 0,          // Heading angle in radians (0 = facing -Z)
+            yawVel: 0,
+            pitchTilt: 0,    // Visual forward/backward tilt
+            rollTilt: 0,     // Visual left/right tilt
+            hp: 100,         // Durability 0 ~ 100
+            crashCount: 0,
+            maxCrashes: 4,
+            invulnerableTimer: 0,
+            propellerAngle: 0
+        };
+
+        // Input State (Left Stick: throttle/yaw, Right Stick: pitch/roll)
+        const controlInput = {
+            leftX: 0,  // Yaw (-1 left, +1 right)
+            leftY: 0,  // Throttle (-1 down, +1 up)
+            rightX: 0, // Roll (-1 left, +1 right)
+            rightY: 0, // Pitch (-1 backward, +1 forward)
+            keys: {}
+        };
+
+        /***********************************************************************
+         * 2. WEB AUDIO API SYNTHESIZER (NO EXTERNAL AUDIO FILES)
+         ***********************************************************************/
+        let audioCtx = null;
+        let motorOsc1 = null;
+        let motorOsc2 = null;
+        let motorGain = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+
+                // Continuous Drone Propeller Hum
+                motorOsc1 = audioCtx.createOscillator();
+                motorOsc2 = audioCtx.createOscillator();
+                motorGain = audioCtx.createGain();
+
+                motorOsc1.type = 'sawtooth';
+                motorOsc2.type = 'triangle';
+                motorOsc1.frequency.value = 85;
+                motorOsc2.frequency.value = 170;
+
+                // Lowpass filter for warm rotor buzz
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 420;
+
+                motorGain.gain.value = 0.0001;
+
+                motorOsc1.connect(filter);
+                motorOsc2.connect(filter);
+                filter.connect(motorGain);
+                motorGain.connect(audioCtx.destination);
+
+                motorOsc1.start();
+                motorOsc2.start();
+            } catch (err) {
+                console.warn('Web Audio API not supported:', err);
+            }
+        }
+
+        function updateMotorSound() {
+            if (!audioCtx || !motorGain) return;
+            if (!appState.audioEnabled || appState.mode === 'lobby' || appState.isPaused) {
+                motorGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.08);
+                return;
+            }
+            const isAirborne = droneState.pos.y > 0.42 || Math.abs(controlInput.leftY) > 0.1;
+            const speedRatio = Math.min(1, droneState.vel.length() / 18);
+            const throttleBoost = Math.max(0, controlInput.leftY) * 35;
+
+            if (isAirborne) {
+                const baseFreq = 95 + speedRatio * 65 + throttleBoost;
+                motorOsc1.frequency.setTargetAtTime(baseFreq, audioCtx.currentTime, 0.05);
+                motorOsc2.frequency.setTargetAtTime(baseFreq * 2.02, audioCtx.currentTime, 0.05);
+                motorGain.gain.setTargetAtTime(0.045 + speedRatio * 0.03, audioCtx.currentTime, 0.08);
+            } else {
+                motorGain.gain.setTargetAtTime(0.005, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        function playSoundEffect(type) {
+            if (!appState.audioEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'ring') {
+                // Cheerful hoop pass arpeggio
+                [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+                    gain.gain.setValueAtTime(0.12, now + idx * 0.055);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.055 + 0.22);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.055);
+                    osc.stop(now + idx * 0.055 + 0.24);
+                });
+            } else if (type === 'crash') {
+                // Impact thud + warning buzz
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(42, now + 0.32);
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.36);
+            } else if (type === 'clear') {
+                // Victory fanfare
+                const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+                const times = [0, 0.1, 0.2, 0.32, 0.46, 0.58];
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + times[idx]);
+                    gain.gain.setValueAtTime(0.16, now + times[idx]);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + times[idx] + 0.28);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + times[idx]);
+                    osc.stop(now + times[idx] + 0.3);
+                });
+            } else if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(660, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'missile') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'explosion') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(28, now + 0.42);
+                gain.gain.setValueAtTime(0.24, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            }
+        }
+
+        function toggleAudio() {
+            appState.audioEnabled = !appState.audioEnabled;
+            const icon = appState.audioEnabled ? '🔊' : '🔇';
+            const text = appState.audioEnabled ? '효과음 켜짐' : '효과음 꺼짐';
+            document.getElementById('lobby-sound-icon').textContent = icon;
+            document.getElementById('lobby-sound-text').textContent = text;
+            document.getElementById('hud-sound-btn').textContent = icon;
+            if (appState.audioEnabled) playSoundEffect('click');
+            updateMotorSound();
+        }
+
+        /***********************************************************************
+         * 3. NICKNAME & LOCALSTORAGE LEADERBOARD
+         ***********************************************************************/
+        function loadRankings() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveRankingRecord(record) {
+            try {
+                const list = loadRankings();
+                list.push(record);
+                // Sort by Score DESC, then Time ASC
+                list.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return a.time - b.time;
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
+                renderLeaderboard();
+            } catch (e) {
+                console.warn('Could not save ranking:', e);
+            }
+        }
+
+        function clearRankings() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (e) {}
+            playSoundEffect('click');
+            renderLeaderboard();
+        }
+
+        function setRankFilter(filter) {
+            appState.rankFilter = filter;
+            ['ALL', 'STAGE1', 'STAGE2', 'STAGE3', 'STAGE4', 'STAGE5'].forEach(tab => {
+                const btn = document.getElementById('rank-tab-' + tab);
+                if (!btn) return;
+                if (tab === filter) {
+                    btn.className = 'py-1 rounded-lg bg-sky-500 text-slate-950 font-black transition';
+                } else {
+                    btn.className = 'py-1 rounded-lg text-slate-400 hover:text-white transition';
+                }
+            });
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-list');
+            const allRecords = loadRankings();
+            const filtered = allRecords.filter(item => {
+                if (appState.rankFilter === 'ALL') return true;
+                return item.modeKey === appState.rankFilter;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="h-36 flex flex-col items-center justify-center text-center p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400">
+                        <div class="text-xl mb-1">🛸</div>
+                        <div class="font-bold text-xs">아직 등록된 비행 기록이 없습니다.</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">닉네임을 등록하고 첫 번째 챔피언이 되어보세요!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map((rec, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}위`;
+                const badgeColor = rec.modeKey === 'STAGE5'
+                    ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30'
+                    : rec.modeKey === 'STAGE4'
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                    : rec.modeKey === 'STAGE3'
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                    : rec.modeKey === 'STAGE2'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : rec.modeKey === 'STAGE1'
+                    ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+
+                return `
+                    <div class="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="font-black w-6 text-center ${idx < 3 ? 'text-sm' : 'text-slate-400'}">${medal}</span>
+                            <div class="truncate">
+                                <div class="font-black text-white truncate">${escapeHtml(rec.name)}</div>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <span class="px-1.5 py-0.2 rounded border text-[9px] font-bold ${badgeColor}">${rec.modeLabel}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">${formatTime(rec.time)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="font-black text-amber-400 text-xs sm:text-sm">${rec.score.toLocaleString()}점</div>
+                            <div class="text-[10px] text-emerald-400">내구도 ${rec.hp}%</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, s => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[s]));
+        }
+
+        function onNicknameInputChange(val) {
+            const trimmed = val.trim();
+            const badge = document.getElementById('current-pilot-badge');
+            const helper = document.getElementById('nickname-helper');
+            const box = document.getElementById('nickname-box');
+
+            if (appState.pilotConfirmed && trimmed === appState.pilotName) {
+                badge.textContent = `✅ 확정됨: ${trimmed}`;
+                badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+                box.className = 'bg-slate-800/90 border-2 border-emerald-500/50 rounded-2xl p-3 sm:p-4 transition-colors';
+                return;
+            }
+
+            // Reset confirmation if modified
+            appState.pilotConfirmed = false;
+            box.className = 'bg-slate-800/90 border-2 border-amber-500/50 rounded-2xl p-3 sm:p-4 transition-colors';
+
+            if (trimmed.length > 0) {
+                badge.textContent = '⏳ 우측 [닉네임 등록] 버튼을 눌러 확정하세요';
+                badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40';
+                helper.textContent = '💡 입력한 닉네임을 사용하려면 [닉네임 등록] 버튼을 눌러 확인 팝업에서 승인해주세요!';
+                helper.className = 'text-[11px] text-amber-300 mt-1.5';
+            } else {
+                badge.textContent = '⚠️ 미등록 (닉네임 확정 필요)';
+                badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30';
+                helper.textContent = '💡 닉네임을 입력하고 [닉네임 등록] 버튼을 눌러 확정해야 비행을 시작할 수 있습니다.';
+                helper.className = 'text-[11px] text-slate-400 mt-1.5';
+            }
+        }
+
+        function showNoticeModal(title, desc, icon = '⚠️') {
+            playSoundEffect('click');
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('notice-modal').classList.remove('hidden');
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('crash-modal').classList.add('hidden');
+            document.getElementById('clear-modal').classList.add('hidden');
+            document.getElementById('guide-modal').classList.add('hidden');
+
+            document.getElementById('notice-modal-icon').textContent = icon;
+            document.getElementById('notice-modal-title').textContent = title;
+            document.getElementById('notice-modal-desc').innerHTML = desc;
+        }
+
+        function closeNoticeModal() {
+            playSoundEffect('click');
+            document.getElementById('notice-modal').classList.add('hidden');
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            if (!appState.pilotConfirmed) {
+                const input = document.getElementById('pilot-nickname');
+                if (input) input.focus();
+            }
+        }
+
+        function requestNicknameConfirm(pendingStart = null) {
+            const input = document.getElementById('pilot-nickname');
+            const name = input ? input.value.trim() : '';
+            const helper = document.getElementById('nickname-helper');
+            const box = document.getElementById('nickname-box');
+
+            if (!name || name.length < 1) {
+                box.className = 'bg-slate-800/90 border-2 border-rose-500 rounded-2xl p-3 sm:p-4 transition-colors';
+                helper.textContent = '🚨 [유효성 검증 오류] 조종사 닉네임이 비어 있습니다! 닉네임을 반드시 입력해주세요.';
+                helper.className = 'text-[11px] text-rose-400 font-bold mt-1.5';
+                showNoticeModal(
+                    '조종사 닉네임 입력 필수!',
+                    '닉네임을 입력하지 않으면 비행 시뮬레이터를 진행할 수 없습니다.<br>학년·반·이름 또는 나만의 조종사 별명을 입력해 주세요!'
+                );
+                return;
+            }
+
+            appState.pendingNickname = name;
+            appState.pendingStartRequest = pendingStart;
+
+            playSoundEffect('click');
+            document.getElementById('confirm-nickname-text').textContent = name;
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('nickname-confirm-modal').classList.remove('hidden');
+            document.getElementById('notice-modal').classList.add('hidden');
+            document.getElementById('crash-modal').classList.add('hidden');
+            document.getElementById('clear-modal').classList.add('hidden');
+            document.getElementById('guide-modal').classList.add('hidden');
+        }
+
+        function cancelNicknameConfirm() {
+            playSoundEffect('click');
+            appState.pendingNickname = '';
+            appState.pendingStartRequest = null;
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            const input = document.getElementById('pilot-nickname');
+            if (input) input.focus();
+        }
+
+        function finalizeNicknameConfirm() {
+            const name = appState.pendingNickname;
+            if (!name) return;
+
+            appState.pilotName = name;
+            appState.pilotConfirmed = true;
+
+            // Load or initialize stage unlock progress for this pilot
+            if (!appState.pilotProgressMap[name]) {
+                appState.pilotProgressMap[name] = { 1: false, 2: false, 3: false, 4: false, 5: false };
+            }
+            appState.clearedStages = appState.pilotProgressMap[name];
+
+            const badge = document.getElementById('current-pilot-badge');
+            const helper = document.getElementById('nickname-helper');
+            const box = document.getElementById('nickname-box');
+
+            badge.textContent = `✅ 확정됨: ${name}`;
+            badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+            box.className = 'bg-slate-800/90 border-2 border-emerald-500/50 rounded-2xl p-3 sm:p-4 transition-colors';
+            helper.textContent = `✅ [${name}] 조종사 등록이 확정되었습니다! 원하는 비행 모드를 선택해 출발하세요.`;
+            helper.className = 'text-[11px] text-emerald-400 font-bold mt-1.5';
+
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('modal-backdrop').classList.add('hidden');
+
+            playSoundEffect('ring');
+            updateStageUnlockUI();
+
+            // If triggered by clicking a mode button, launch it after confirmation
+            if (appState.pendingStartRequest) {
+                const req = appState.pendingStartRequest;
+                appState.pendingStartRequest = null;
+                startGameMode(req.mode, req.stage);
+            }
+        }
+
+        function isStage4And5Unlocked() {
+            return Boolean(appState.clearedStages[1] && appState.clearedStages[2] && appState.clearedStages[3]);
+        }
+
+        function updateStageUnlockUI() {
+            const unlocked = isStage4And5Unlocked();
+            const unlockBadge = document.getElementById('unlock-status-badge');
+
+            if (unlocked) {
+                unlockBadge.textContent = '🔓 1·2·3단계 클리어 완료! 4단계(미사일 회피) & 5단계(적 드론 교전) 오픈!';
+                unlockBadge.className = 'text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/50';
+            } else {
+                const c1 = appState.clearedStages[1] ? '✅1단계' : '⬜1단계';
+                const c2 = appState.clearedStages[2] ? '✅2단계' : '⬜2단계';
+                const c3 = appState.clearedStages[3] ? '✅3단계' : '⬜3단계';
+                unlockBadge.textContent = `🔒 4·5단계 해금 조건: ${c1} · ${c2} · ${c3} 완료 필요`;
+                unlockBadge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-amber-300 border border-amber-400/30';
+            }
+
+            // Update Stage 1~3 completion checkmarks
+            [1, 2, 3].forEach(s => {
+                const badgeEl = document.getElementById(`badge-stage-${s}`);
+                if (!badgeEl) return;
+                const defaultIcon = s === 1 ? '⭕' : s === 2 ? '🌲' : '🏁';
+                badgeEl.textContent = appState.clearedStages[s] ? '✅' : defaultIcon;
+            });
+
+            // Update Stage 4 & 5 Cards
+            const card4 = document.getElementById('card-stage-4');
+            const badge4 = document.getElementById('badge-stage-4');
+            const footer4 = document.getElementById('footer-stage-4');
+
+            const card5 = document.getElementById('card-stage-5');
+            const badge5 = document.getElementById('badge-stage-5');
+            const footer5 = document.getElementById('footer-stage-5');
+
+            if (unlocked) {
+                card4.className = 'text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-purple-950/70 border border-purple-500/50 hover:border-purple-400 transition group flex flex-col justify-between';
+                badge4.textContent = appState.clearedStages[4] ? '✅' : '🚀';
+                footer4.className = 'mt-2 text-[10px] font-extrabold text-purple-400 flex items-center justify-between';
+                footer4.innerHTML = '<span>100초</span><span>출발 →</span>';
+
+                card5.className = 'text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-fuchsia-950/70 border border-fuchsia-500/50 hover:border-fuchsia-400 transition group flex flex-col justify-between';
+                badge5.textContent = appState.clearedStages[5] ? '✅' : '⚔️';
+                footer5.className = 'mt-2 text-[10px] font-extrabold text-fuchsia-400 flex items-center justify-between';
+                footer5.innerHTML = '<span>120초</span><span>출발 →</span>';
+            } else {
+                card4.className = 'text-left p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 opacity-75 transition group flex flex-col justify-between';
+                badge4.textContent = '🔒';
+                footer4.className = 'mt-2 text-[10px] font-extrabold text-slate-500 flex items-center justify-between';
+                footer4.innerHTML = '<span>1~3단계 필요</span><span>잠김</span>';
+
+                card5.className = 'text-left p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 opacity-75 transition group flex flex-col justify-between';
+                badge5.textContent = '🔒';
+                footer5.className = 'mt-2 text-[10px] font-extrabold text-slate-500 flex items-center justify-between';
+                footer5.innerHTML = '<span>1~3단계 필요</span><span>잠김</span>';
+            }
+        }
+
+        /***********************************************************************
+         * 4. THREE.JS 3D SCENE, DRONE MODEL & OBSTACLES
+         ***********************************************************************/
+        let scene, camera, renderer;
+        let droneGroup, droneBodyMesh, droneShadowMesh, targetArrowGroup;
+        const propellers = [];
+        const terrainColliders = [];  // Trees, Rocks, Mission Pillars
+        const missionHoops = [];      // Hula hoops to pass through
+        const movingHazards = [];     // Moving bars in Stage 3 & 4
+        const playerMissiles = [];    // Player fired missiles
+        const enemyMissiles = [];     // Incoming missiles in Stage 4 & 5
+        const missileLaunchers = [];  // Turrets for Stage 4
+        const enemyDrones = [];       // Enemy combat drones for Stage 5
+        const explosionParticles = []; // Visual hit/explosion effects
+        let missileSpawnTimer = 0;
+        let goalPadMesh = null;
+        let goalPadPos = new THREE.Vector3(0, 0, 0);
+        let tutorialMarkerMesh = null;
+
+        function initThreeScene() {
+            const canvas = document.getElementById('game-canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x7dd3fc);
+            scene.fog = new THREE.FogExp2(0x7dd3fc, 0.0045);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 350);
+
+            // Lights
+            const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 0.85);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(45, 80, 35);
+            scene.add(dirLight);
+
+            // Ground Plane + Grid for clear spatial perception
+            const groundGeo = new THREE.PlaneGeometry(320, 320);
+            const groundMat = new THREE.MeshLambertMaterial({ color: 0x15803d });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+
+            const gridHelper = new THREE.GridHelper(320, 64, 0x22c55e, 0x166534);
+            gridHelper.position.y = 0.02;
+            scene.add(gridHelper);
+
+            // Start Helipad (0, 0, 0)
+            createHelipad(0, 0, 0x0284c7, 'H');
+
+            // Create Player Drone & Ground Shadow Ring
+            createDroneObject();
+
+            // Create Initial Decorative Environment
+            buildEnvironment('practice', 0);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createHelipad(x, z, colorHex, labelType) {
+            const group = new THREE.Group();
+            const padGeo = new THREE.CylinderGeometry(2.6, 2.8, 0.16, 32);
+            const padMat = new THREE.MeshLambertMaterial({ color: colorHex });
+            const pad = new THREE.Mesh(padGeo, padMat);
+            pad.position.y = 0.08;
+            group.add(pad);
+
+            const ringGeo = new THREE.RingGeometry(2.0, 2.35, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.17;
+            group.add(ring);
+
+            // H letter bars
+            const barMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 1.8), barMat);
+            bar1.position.set(-0.6, 0.18, 0);
+            const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 1.8), barMat);
+            bar2.position.set(0.6, 0.18, 0);
+            const barCross = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.35), barMat);
+            barCross.position.set(0, 0.18, 0);
+            group.add(bar1, bar2, barCross);
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+            return group;
+        }
+
+        function createDroneObject() {
+            droneGroup = new THREE.Group();
+
+            // Main Body
+            const bodyGeo = new THREE.BoxGeometry(0.95, 0.28, 1.15);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xf8fafc, shininess: 80 });
+            droneBodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            droneGroup.add(droneBodyMesh);
+
+            // Canopy Top (Sky Blue)
+            const topGeo = new THREE.SphereGeometry(0.42, 16, 12);
+            topGeo.scale(1, 0.45, 1.25);
+            const topMat = new THREE.MeshPhongMaterial({ color: 0x0284c7, shininess: 100 });
+            const topMesh = new THREE.Mesh(topGeo, topMat);
+            topMesh.position.y = 0.14;
+            droneGroup.add(topMesh);
+
+            // Front Direction Nose Cone (Bright Cyan/Green LED at front -Z)
+            const noseGeo = new THREE.ConeGeometry(0.22, 0.45, 12);
+            const noseMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
+            const noseMesh = new THREE.Mesh(noseGeo, noseMat);
+            noseMesh.rotation.x = -Math.PI / 2;
+            noseMesh.position.set(0, 0.05, -0.75);
+            droneGroup.add(noseMesh);
+
+            // 4 Arms + Rotor Guards + Propellers
+            const armPositions = [
+                { x: -0.8, z: -0.8, color: 0x38bdf8 }, // Front Left (Blue)
+                { x:  0.8, z: -0.8, color: 0x38bdf8 }, // Front Right (Blue)
+                { x: -0.8, z:  0.8, color: 0xf43f5e }, // Rear Left (Red)
+                { x:  0.8, z:  0.8, color: 0xf43f5e }  // Rear Right (Red)
+            ];
+
+            propellers.length = 0;
+
+            armPositions.forEach(pos => {
+                // Arm bar
+                const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.15, 8);
+                const armMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+                const arm = new THREE.Mesh(armGeo, armMat);
+                arm.rotation.z = Math.PI / 2;
+                arm.rotation.y = Math.atan2(pos.z, pos.x);
+                arm.position.set(pos.x * 0.5, 0, pos.z * 0.5);
+                droneGroup.add(arm);
+
+                // Protective Rotor Guard Ring (Safety guard for classroom drones!)
+                const guardGeo = new THREE.TorusGeometry(0.48, 0.045, 8, 24);
+                const guardMat = new THREE.MeshLambertMaterial({ color: pos.color });
+                const guard = new THREE.Mesh(guardGeo, guardMat);
+                guard.rotation.x = Math.PI / 2;
+                guard.position.set(pos.x, 0.05, pos.z);
+                droneGroup.add(guard);
+
+                // Spinning Propeller Blade
+                const propGroup = new THREE.Group();
+                const bladeGeo = new THREE.BoxGeometry(0.82, 0.02, 0.11);
+                const bladeMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
+                const blade1 = new THREE.Mesh(bladeGeo, bladeMat);
+                const blade2 = new THREE.Mesh(bladeGeo, bladeMat);
+                blade2.rotation.y = Math.PI / 2;
+                propGroup.add(blade1, blade2);
+                propGroup.position.set(pos.x, 0.12, pos.z);
+                droneGroup.add(propGroup);
+                propellers.push(propGroup);
+            });
+
+            // Landing Skids
+            const skidMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+            [-0.42, 0.42].forEach(xOffset => {
+                const skid = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.9), skidMat);
+                skid.position.set(xOffset, -0.22, 0);
+                droneGroup.add(skid);
+            });
+
+            scene.add(droneGroup);
+
+            // Ground Shadow Ring directly beneath the drone (helps elementary students judge landing & position)
+            const shadowGeo = new THREE.RingGeometry(0.35, 0.95, 24);
+            const shadowMat = new THREE.MeshBasicMaterial({
+                color: 0x0f172a,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.45
+            });
+            droneShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+            droneShadowMesh.rotation.x = -Math.PI / 2;
+            droneShadowMesh.position.y = 0.04;
+            scene.add(droneShadowMesh);
+
+            // Floating 3D Guidance Arrow above the drone pointing toward next objective
+            targetArrowGroup = new THREE.Group();
+            const arrowCone = new THREE.Mesh(
+                new THREE.ConeGeometry(0.28, 0.65, 12),
+                new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+            );
+            arrowCone.rotation.x = -Math.PI / 2;
+            arrowCone.position.z = -0.35;
+            const arrowTail = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.12, 0.55),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            arrowTail.position.z = 0.15;
+            targetArrowGroup.add(arrowCone, arrowTail);
+            scene.add(targetArrowGroup);
+        }
+
+        /***********************************************************************
+         * 5. WORLD & COURSE GENERATOR (PRACTICE & STAGES 1~3)
+         ***********************************************************************/
+        let dynamicObjects = [];
+
+        function clearDynamicWorld() {
+            dynamicObjects.forEach(obj => scene.remove(obj));
+            dynamicObjects = [];
+            terrainColliders.length = 0;
+            missionHoops.length = 0;
+            movingHazards.length = 0;
+            playerMissiles.length = 0;
+            enemyMissiles.length = 0;
+            missileLaunchers.length = 0;
+            enemyDrones.length = 0;
+            explosionParticles.length = 0;
+            missileSpawnTimer = 0;
+            goalPadMesh = null;
+            tutorialMarkerMesh = null;
+        }
+
+        function createMissileTurret(x, z) {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.1, 1.4, 1.2, 12),
+                new THREE.MeshLambertMaterial({ color: 0x334155 })
+            );
+            base.position.y = 0.6;
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, 0.9, 1.6),
+                new THREE.MeshLambertMaterial({ color: 0xdc2626 })
+            );
+            head.position.y = 1.4;
+            group.add(base, head);
+            group.position.set(x, 0, z);
+            scene.add(group);
+            dynamicObjects.push(group);
+
+            missileLaunchers.push({ x, y: 1.8, z, group });
+            terrainColliders.push({
+                type: '미사일 포대',
+                x,
+                z,
+                minY: 0,
+                maxY: 2.3,
+                radius: 1.4,
+                damage: 35
+            });
+        }
+
+        function createEnemyCombatDrone(x, y, z, patrolRange = 9, speed = 1.6) {
+            const group = new THREE.Group();
+
+            // 1. Center Core (Bullseye Target - Hitting this center area causes instant 100% destruction!)
+            const coreGeo = new THREE.SphereGeometry(0.65, 16, 16);
+            const coreMat = new THREE.MeshPhongMaterial({
+                color: 0xff1144,
+                emissive: 0x990022,
+                shininess: 100
+            });
+            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            group.add(coreMesh);
+
+            // Inner glowing target ring around core
+            const bullseyeGeo = new THREE.TorusGeometry(0.72, 0.08, 10, 24);
+            const bullseyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const bullseyeRing = new THREE.Mesh(bullseyeGeo, bullseyeMat);
+            group.add(bullseyeRing);
+
+            // 2. Peripheral Outer Frame & Rotor Guards (Hitting periphery deals 50% damage, requiring follow-up hit)
+            const outerRingGeo = new THREE.TorusGeometry(1.75, 0.14, 10, 28);
+            const outerRingMat = new THREE.MeshLambertMaterial({ color: 0xa855f7 });
+            const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
+            outerRing.rotation.x = Math.PI / 2;
+            group.add(outerRing);
+
+            // Cross Arms
+            const armMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+            const arm1 = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.14, 0.22), armMat);
+            const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 3.4), armMat);
+            group.add(arm1, arm2);
+
+            group.position.set(x, y, z);
+            scene.add(group);
+            dynamicObjects.push(group);
+
+            enemyDrones.push({
+                group,
+                coreMesh,
+                outerRing,
+                bullseyeRing,
+                pos: new THREE.Vector3(x, y, z),
+                baseX: x,
+                baseY: y,
+                baseZ: z,
+                patrolRange,
+                speed,
+                phase: Math.random() * Math.PI * 2,
+                hp: 100, // 100 HP: Center hit = -100 (instant kill), Peripheral hit = -50 (needs 2 hits)
+                alive: true,
+                fireCooldown: 2.0 + Math.random() * 2.5
+            });
+        }
+
+        function spawnMissileMesh(pos, dir, isPlayer) {
+            const group = new THREE.Group();
+            const bodyGeo = new THREE.CylinderGeometry(0.14, 0.18, 1.35, 10);
+            bodyGeo.rotateX(Math.PI / 2);
+            const bodyMat = new THREE.MeshBasicMaterial({
+                color: isPlayer ? 0x38bdf8 : 0xef4444
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+
+            const tipGeo = new THREE.ConeGeometry(0.2, 0.45, 10);
+            tipGeo.rotateX(Math.PI / 2);
+            const tipMat = new THREE.MeshBasicMaterial({
+                color: isPlayer ? 0xfacc15 : 0xf97316
+            });
+            const tip = new THREE.Mesh(tipGeo, tipMat);
+            tip.position.z = 0.85;
+
+            const glowGeo = new THREE.SphereGeometry(0.24, 8, 8);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: isPlayer ? 0x22d3ee : 0xfbbf24
+            });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.z = -0.7;
+
+            group.add(body, tip, glow);
+            group.position.copy(pos);
+
+            const targetLook = pos.clone().add(dir);
+            group.lookAt(targetLook);
+
+            scene.add(group);
+            dynamicObjects.push(group);
+            return group;
+        }
+
+        function createExplosionEffect(pos, colorHex = 0xf97316, count = 14) {
+            for (let i = 0; i < count; i++) {
+                const geo = new THREE.SphereGeometry(0.22 + Math.random() * 0.2, 8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 1 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(pos);
+                scene.add(mesh);
+                dynamicObjects.push(mesh);
+
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 14,
+                    (Math.random() - 0.3) * 12,
+                    (Math.random() - 0.5) * 14
+                );
+                explosionParticles.push({ mesh, vel, life: 0.65 });
+            }
+        }
+
+        function firePlayerMissile() {
+            if (appState.mode === 'lobby' || appState.isPaused) return;
+            const now = performance.now();
+            if (now - appState.lastFireTime < 220) return; // Rapid fire cooldown
+            appState.lastFireTime = now;
+
+            // Fire horizontally in the exact direction the drone is looking and at the drone's current altitude
+            const forwardDir = new THREE.Vector3(
+                -Math.sin(droneState.yaw),
+                0,
+                -Math.cos(droneState.yaw)
+            ).normalize();
+
+            const spawnPos = new THREE.Vector3(
+                droneState.pos.x + forwardDir.x * 1.15,
+                droneState.pos.y,
+                droneState.pos.z + forwardDir.z * 1.15
+            );
+
+            const mesh = spawnMissileMesh(spawnPos, forwardDir, true);
+            playerMissiles.push({
+                mesh,
+                pos: spawnPos,
+                vel: forwardDir.multiplyScalar(52), // Fast horizontal flight at current altitude
+                life: 3.2
+            });
+
+            playSoundEffect('missile');
+        }
+
+        function createTree(x, z, scale = 1) {
+            const group = new THREE.Group();
+            const trunkH = 2.6 * scale;
+            const trunkGeo = new THREE.CylinderGeometry(0.35 * scale, 0.55 * scale, trunkH, 10);
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = trunkH / 2;
+            group.add(trunk);
+
+            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x16a34a });
+            const cone1 = new THREE.Mesh(new THREE.ConeGeometry(2.2 * scale, 3.6 * scale, 10), leavesMat);
+            cone1.position.y = trunkH + 1.2 * scale;
+            const cone2 = new THREE.Mesh(new THREE.ConeGeometry(1.7 * scale, 3.0 * scale, 10), leavesMat);
+            cone2.position.y = trunkH + 2.8 * scale;
+            group.add(cone1, cone2);
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+            dynamicObjects.push(group);
+
+            terrainColliders.push({
+                type: '나무',
+                x,
+                z,
+                minY: 0,
+                maxY: trunkH + 4.1 * scale,
+                radius: 1.75 * scale,
+                damage: 34
+            });
+        }
+
+        function createRock(x, z, radius = 2.0) {
+            const geo = new THREE.DodecahedronGeometry(radius, 1);
+            const mat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+            const rock = new THREE.Mesh(geo, mat);
+            rock.scale.y = 0.75;
+            rock.position.set(x, radius * 0.45, z);
+            scene.add(rock);
+            dynamicObjects.push(rock);
+
+            terrainColliders.push({
+                type: '바위',
+                x,
+                z,
+                minY: 0,
+                maxY: radius * 1.15,
+                radius: radius * 0.95,
+                damage: 34
+            });
+        }
+
+        function createHazardPillar(x, z, height = 10) {
+            const group = new THREE.Group();
+            const geo = new THREE.CylinderGeometry(0.85, 0.85, height, 16);
+            const mat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+            const pillar = new THREE.Mesh(geo, mat);
+            pillar.position.y = height / 2;
+            group.add(pillar);
+
+            // Warning yellow stripes
+            const stripeGeo = new THREE.CylinderGeometry(0.88, 0.88, 1.2, 16);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+            for (let y = 2; y < height - 1; y += 3) {
+                const s = new THREE.Mesh(stripeGeo, stripeMat);
+                s.position.y = y;
+                group.add(s);
+            }
+
+            group.position.set(x, 0, z);
+            scene.add(group);
+            dynamicObjects.push(group);
+
+            terrainColliders.push({
+                type: '장애물 기둥',
+                x,
+                z,
+                minY: 0,
+                maxY: height,
+                radius: 0.95,
+                damage: 35
+            });
+        }
+
+        function createMovingHazardBar(x, y, z, rangeX = 7, speed = 2.2) {
+            const geo = new THREE.BoxGeometry(4.2, 0.9, 0.9);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+            dynamicObjects.push(mesh);
+
+            movingHazards.push({
+                mesh,
+                baseX: x,
+                y,
+                z,
+                rangeX,
+                speed,
+                halfW: 2.1,
+                halfH: 0.55
+            });
+        }
+
+        function createHulaHoop(x, y, z, rotY = 0, radius = 3.2, index = 0) {
+            const group = new THREE.Group();
+
+            // Torus Ring
+            const torusGeo = new THREE.TorusGeometry(radius, 0.24, 14, 36);
+            const torusMat = new THREE.MeshPhongMaterial({
+                color: index === 0 ? 0xfacc15 : 0x38bdf8,
+                emissive: index === 0 ? 0xca8a04 : 0x0284c7,
+                emissiveIntensity: 0.35
+            });
+            const torus = new THREE.Mesh(torusGeo, torusMat);
+            group.add(torus);
+
+            // Support pole to ground so students can easily judge height
+            const poleHeight = Math.max(0.5, y - radius);
+            const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, poleHeight, 8);
+            const poleMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = -radius - poleHeight / 2;
+            group.add(pole);
+
+            group.position.set(x, y, z);
+            group.rotation.y = rotY;
+            scene.add(group);
+            dynamicObjects.push(group);
+
+            missionHoops.push({
+                group,
+                torus,
+                pos: new THREE.Vector3(x, y, z),
+                rotY,
+                radius,
+                tubeRadius: 0.28,
+                passed: false,
+                index
+            });
+        }
+
+        function buildEnvironment(mode, stage) {
+            clearDynamicWorld();
+
+            // Perimeter Trees & Rocks around the field
+            const ringPositions = [
+                [-18, -14, 1.1], [19, -15, 1.2], [-22, -36, 1.3], [24, -38, 1.1],
+                [-16, -58, 1.2], [18, -62, 1.25], [-25, -85, 1.3], [25, -88, 1.2],
+                [-14, 14, 1.0], [15, 14, 1.1], [-28, -5, 1.2], [28, -8, 1.15]
+            ];
+            ringPositions.forEach(([x, z, s]) => createTree(x, z, s));
+
+            const rockPositions = [
+                [-10, -10, 1.8], [11, -18, 2.1], [-14, -44, 2.3], [13, -52, 2.0],
+                [-9, -72, 2.2], [12, -78, 1.9], [-20, 8, 2.0], [20, 6, 2.2]
+            ];
+            rockPositions.forEach(([x, z, r]) => createRock(x, z, r));
+
+            if (mode === 'practice') {
+                // Tutorial Waypoint Marker (Glowing Sphere/Ring for Step 3)
+                const markerGeo = new THREE.TorusGeometry(2.2, 0.18, 12, 28);
+                const markerMat = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+                tutorialMarkerMesh = new THREE.Mesh(markerGeo, markerMat);
+                tutorialMarkerMesh.position.set(0, 4.5, -18);
+                scene.add(tutorialMarkerMesh);
+                dynamicObjects.push(tutorialMarkerMesh);
+
+                // Additional Practice Hoops for Free Flight after Tutorial
+                createHulaHoop(-10, 5, -32, 0.3, 3.4, 0);
+                createHulaHoop(0, 6.5, -48, 0, 3.4, 1);
+                createHulaHoop(10, 5, -32, -0.3, 3.4, 2);
+
+                // Practice Trees & Rocks near center to test obstacle collision awareness
+                createTree(-8, -22, 1.0);
+                createRock(8, -22, 1.8);
+
+                goalPadPos.set(0, 0, 0);
+            } else if (stage === 1) {
+                // STAGE 1: Hula Hoop Basic Course (6 Hoops + Landing Pad)
+                const hoopData = [
+                    [0, 4.5, -16, 0],
+                    [-6, 5.5, -32, 0.25],
+                    [5, 6.0, -48, -0.25],
+                    [-4, 4.5, -64, 0.15],
+                    [4, 7.0, -80, -0.15],
+                    [0, 5.0, -96, 0]
+                ];
+                hoopData.forEach((h, i) => createHulaHoop(h[0], h[1], h[2], h[3], 3.3, i));
+                createTree(-9, -24, 1.1);
+                createTree(9, -40, 1.1);
+                createRock(-8, -56, 2.0);
+                createRock(8, -72, 2.1);
+
+                goalPadPos.set(0, 0, -112);
+                goalPadMesh = createHelipad(0, -112, 0x10b981, 'G');
+                dynamicObjects.push(goalPadMesh);
+            } else if (stage === 2) {
+                // STAGE 2: Obstacle Slalom & Forest Course (8 Hoops + Hazard Pillars + Trees)
+                const hoopData = [
+                    [0, 4.5, -15, 0],
+                    [-9, 5.5, -30, 0.35],
+                    [9, 6.0, -45, -0.35],
+                    [-9, 5.0, -60, 0.35],
+                    [9, 6.5, -75, -0.35],
+                    [0, 8.0, -90, 0],
+                    [-6, 5.0, -106, 0.2],
+                    [0, 4.5, -122, 0]
+                ];
+                hoopData.forEach((h, i) => createHulaHoop(h[0], h[1], h[2], h[3], 3.0, i));
+
+                // Slalom Obstacles in the middle
+                createHazardPillar(0, -23, 11);
+                createTree(0, -38, 1.35);
+                createHazardPillar(0, -52, 12);
+                createTree(0, -68, 1.4);
+                createRock(-5, -82, 2.4);
+                createRock(5, -82, 2.4);
+                createHazardPillar(4, -98, 11);
+                createTree(-8, -114, 1.25);
+
+                goalPadPos.set(0, 0, -138);
+                goalPadMesh = createHelipad(0, -138, 0x10b981, 'G');
+                dynamicObjects.push(goalPadMesh);
+            } else if (stage === 3) {
+                // STAGE 3: Championship Drone Race (10 Hoops + Moving Obstacles + Tight Turns)
+                const hoopData = [
+                    [0, 4.5, -15, 0],
+                    [0, 6.5, -32, 0],
+                    [-11, 5.5, -48, 0.4],
+                    [-11, 7.5, -66, 0],
+                    [0, 6.0, -82, -0.4],
+                    [12, 5.0, -98, -0.35],
+                    [12, 8.0, -116, 0],
+                    [0, 6.5, -132, 0.35],
+                    [-6, 4.8, -148, 0.15],
+                    [0, 4.2, -164, 0]
+                ];
+                hoopData.forEach((h, i) => createHulaHoop(h[0], h[1], h[2], h[3], 2.85, i));
+
+                // Moving Hazard Bars & Pillars
+                createMovingHazardBar(0, 5.5, -24, 6.5, 2.4);
+                createHazardPillar(-5, -40, 12);
+                createMovingHazardBar(-11, 6.5, -57, 5.5, 2.8);
+                createTree(-4, -74, 1.35);
+                createMovingHazardBar(6, 5.5, -90, 6.0, 2.6);
+                createHazardPillar(12, -107, 5.2);
+                createMovingHazardBar(6, 7.0, -124, 6.5, 3.0);
+                createRock(-3, -140, 2.5);
+                createTree(6, -155, 1.3);
+
+                goalPadPos.set(0, 0, -180);
+                goalPadMesh = createHelipad(0, -180, 0x10b981, 'G');
+                dynamicObjects.push(goalPadMesh);
+            } else if (stage === 4) {
+                // STAGE 4: Incoming Missile & Flying Obstacle Evasion Course
+                const hoopData = [
+                    [0, 5.0, -25, 0],
+                    [-7, 6.0, -52, 0.2],
+                    [7, 5.5, -80, -0.2],
+                    [-6, 6.5, -108, 0.15],
+                    [0, 5.0, -135, 0]
+                ];
+                hoopData.forEach((h, i) => createHulaHoop(h[0], h[1], h[2], h[3], 3.4, i));
+
+                // Moving aerial barriers & missile turrets along the canyon
+                createMovingHazardBar(0, 5.5, -38, 8.0, 2.6);
+                createMovingHazardBar(0, 6.0, -66, 8.5, 3.0);
+                createMovingHazardBar(0, 5.5, -94, 8.0, 2.8);
+                createMovingHazardBar(0, 6.2, -122, 8.5, 3.2);
+
+                createMissileTurret(-11, -35);
+                createMissileTurret(11, -55);
+                createMissileTurret(-11, -75);
+                createMissileTurret(11, -95);
+                createMissileTurret(-10, -115);
+                createMissileTurret(10, -135);
+                createMissileTurret(0, -162);
+
+                goalPadPos.set(0, 0, -155);
+                goalPadMesh = createHelipad(0, -155, 0x10b981, 'G');
+                dynamicObjects.push(goalPadMesh);
+            } else if (stage === 5) {
+                // STAGE 5: Aerial Combat against 6 Enemy Combat Drones
+                const enemyConfigs = [
+                    [0, 5.0, -22, 7, 1.5],
+                    [-10, 6.5, -38, 8, 1.8],
+                    [10, 5.5, -52, 8, 1.7],
+                    [-8, 7.5, -68, 9, 2.0],
+                    [8, 6.0, -84, 9, 2.1],
+                    [0, 7.0, -100, 10, 2.3]
+                ];
+                enemyConfigs.forEach(cfg => createEnemyCombatDrone(cfg[0], cfg[1], cfg[2], cfg[3], cfg[4]));
+
+                // Cover pillars & rocks
+                createRock(-12, -28, 2.2);
+                createRock(12, -45, 2.2);
+                createHazardPillar(-14, -60, 10);
+                createHazardPillar(14, -76, 10);
+
+                goalPadPos.set(0, 0, -115);
+                goalPadMesh = createHelipad(0, -115, 0x10b981, 'G');
+                dynamicObjects.push(goalPadMesh);
+            }
+
+            appState.totalHoops = missionHoops.length;
+            appState.currentHoopIndex = 0;
+            appState.allHoopsCleared = false;
+            appState.totalEnemies = enemyDrones.length;
+            appState.enemiesRemaining = enemyDrones.length;
+            highlightActiveHoop();
+        }
+
+        function highlightActiveHoop() {
+            missionHoops.forEach((hoop, idx) => {
+                if (hoop.passed) {
+                    hoop.torus.material.color.setHex(0x22c55e);
+                    hoop.torus.material.emissive.setHex(0x15803d);
+                } else if (idx === appState.currentHoopIndex) {
+                    hoop.torus.material.color.setHex(0xfacc15);
+                    hoop.torus.material.emissive.setHex(0xca8a04);
+                } else {
+                    hoop.torus.material.color.setHex(0x38bdf8);
+                    hoop.torus.material.emissive.setHex(0x0369a1);
+                }
+            });
+        }
+
+        /***********************************************************************
+         * 6. DUAL VIRTUAL JOYSTICKS + KEYBOARD (WASD + ARROWS) INPUT
+         ***********************************************************************/
+        function initInputControllers() {
+            setupVirtualJoystick('joystick-left', 'knob-left', (nx, ny) => {
+                controlInput.leftX = nx;
+                controlInput.leftY = -ny; // Up is positive throttle
+            });
+
+            setupVirtualJoystick('joystick-right', 'knob-right', (nx, ny) => {
+                controlInput.rightX = nx;
+                controlInput.rightY = -ny; // Up is forward pitch
+            });
+
+            window.addEventListener('keydown', e => {
+                if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+                const code = e.code;
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) {
+                    e.preventDefault();
+                }
+                controlInput.keys[code] = true;
+
+                if (code === 'Space' && appState.mode !== 'lobby') {
+                    firePlayerMissile();
+                } else if ((code === 'ShiftLeft' || code === 'ShiftRight') && appState.mode !== 'lobby') {
+                    emergencyLand();
+                } else if (code === 'KeyC' && appState.mode !== 'lobby') {
+                    switchCameraMode();
+                } else if (code === 'KeyR' && appState.mode !== 'lobby') {
+                    restartCurrentMode();
+                }
+            });
+
+            window.addEventListener('keyup', e => {
+                controlInput.keys[e.code] = false;
+            });
+        }
+
+        function setupVirtualJoystick(zoneId, knobId, onUpdate) {
+            const zone = document.getElementById(zoneId);
+            const knob = document.getElementById(knobId);
+            let activePointerId = null;
+
+            function handleMove(clientX, clientY) {
+                const rect = zone.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const maxDist = rect.width * 0.36;
+
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
+                knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                onUpdate(dx / maxDist, dy / maxDist);
+            }
+
+            function resetKnob() {
+                activePointerId = null;
+                knob.style.transform = 'translate(-50%, -50%)';
+                onUpdate(0, 0);
+            }
+
+            zone.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                initAudio();
+                activePointerId = e.pointerId;
+                zone.setPointerCapture(e.pointerId);
+                handleMove(e.clientX, e.clientY);
+            });
+
+            zone.addEventListener('pointermove', e => {
+                if (e.pointerId !== activePointerId) return;
+                e.preventDefault();
+                handleMove(e.clientX, e.clientY);
+            });
+
+            zone.addEventListener('pointerup', e => {
+                if (e.pointerId !== activePointerId) return;
+                resetKnob();
+            });
+
+            zone.addEventListener('pointercancel', e => {
+                if (e.pointerId !== activePointerId) return;
+                resetKnob();
+            });
+        }
+
+        function getCombinedControls() {
+            const k = controlInput.keys;
+            let kbLeftX = 0, kbLeftY = 0, kbRightX = 0, kbRightY = 0;
+
+            if (k['KeyW']) kbLeftY += 1;
+            if (k['KeyS']) kbLeftY -= 1;
+            if (k['KeyA']) kbLeftX -= 1;
+            if (k['KeyD']) kbLeftX += 1;
+
+            if (k['ArrowUp']) kbRightY += 1;
+            if (k['ArrowDown']) kbRightY -= 1;
+            if (k['ArrowLeft']) kbRightX -= 1;
+            if (k['ArrowRight']) kbRightX += 1;
+
+            // Update keyboard badges in HUD
+            toggleKeyBadge('key-w', k['KeyW']);
+            toggleKeyBadge('key-s', k['KeyS']);
+            toggleKeyBadge('key-a', k['KeyA']);
+            toggleKeyBadge('key-d', k['KeyD']);
+            toggleKeyBadge('key-up', k['ArrowUp']);
+            toggleKeyBadge('key-down', k['ArrowDown']);
+            toggleKeyBadge('key-left', k['ArrowLeft']);
+            toggleKeyBadge('key-right', k['ArrowRight']);
+
+            const finalLeftX = Math.max(-1, Math.min(1, controlInput.leftX + kbLeftX));
+            const finalLeftY = Math.max(-1, Math.min(1, controlInput.leftY + kbLeftY));
+            const finalRightX = Math.max(-1, Math.min(1, controlInput.rightX + kbRightX));
+            const finalRightY = Math.max(-1, Math.min(1, controlInput.rightY + kbRightY));
+
+            // Visually reflect keyboard input on the virtual joystick knobs if touch is idle
+            if (controlInput.leftX === 0 && controlInput.leftY === 0) {
+                const knobL = document.getElementById('knob-left');
+                if (knobL) knobL.style.transform = `translate(calc(-50% + ${finalLeftX * 38}px), calc(-50% + ${-finalLeftY * 38}px))`;
+            }
+            if (controlInput.rightX === 0 && controlInput.rightY === 0) {
+                const knobR = document.getElementById('knob-right');
+                if (knobR) knobR.style.transform = `translate(calc(-50% + ${finalRightX * 38}px), calc(-50% + ${-finalRightY * 38}px))`;
+            }
+
+            return {
+                throttle: finalLeftY,
+                yaw: finalLeftX,
+                pitch: finalRightY,
+                roll: finalRightX
+            };
+        }
+
+        function toggleKeyBadge(id, isActive) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (isActive) el.classList.add('active');
+            else el.classList.remove('active');
+        }
+
+        function emergencyLand() {
+            droneState.vel.set(0, 0, 0);
+            showToast('🛑 호버링 제자리 정지 작동!', 'border-sky-400');
+            playSoundEffect('click');
+        }
+
+        /***********************************************************************
+         * 7. DRONE PHYSICS, COLLISION DETECTION & MISSION/TUTORIAL LOGIC
+         ***********************************************************************/
+        function resetDronePhysics() {
+            droneState.pos.set(0, 0.35, 0);
+            droneState.vel.set(0, 0, 0);
+            droneState.yaw = 0;
+            droneState.yawVel = 0;
+            droneState.pitchTilt = 0;
+            droneState.rollTilt = 0;
+            droneState.hp = 100;
+            droneState.crashCount = 0;
+            droneState.invulnerableTimer = 0;
+            updateHpHud();
+        }
+
+        function updatePhysicsAndCollisions(dt) {
+            if (appState.mode === 'lobby' || appState.isPaused) return;
+
+            const ctrl = getCombinedControls();
+
+            // 1. Yaw (Left Stick X)
+            const yawSpeed = 2.1;
+            droneState.yaw -= ctrl.yaw * yawSpeed * dt;
+            if (appState.mode === 'practice' && appState.tutorialStep === 4) {
+                appState.yawAccumulated += Math.abs(ctrl.yaw * yawSpeed * dt);
+            }
+
+            // 2. Vertical Throttle (Left Stick Y)
+            const verticalAccel = 22.0;
+            droneState.vel.y += ctrl.throttle * verticalAccel * dt;
+            droneState.vel.y *= Math.pow(0.04, dt); // Vertical air damping (auto-hover when stick released)
+
+            // 3. Forward/Backward Pitch & Left/Right Roll relative to Drone Heading
+            const moveAccel = 28.0;
+            const forwardDir = new THREE.Vector3(-Math.sin(droneState.yaw), 0, -Math.cos(droneState.yaw));
+            const rightDir = new THREE.Vector3(Math.cos(droneState.yaw), 0, -Math.sin(droneState.yaw));
+
+            // Only allow horizontal movement when slightly airborne
+            const airborneFactor = droneState.pos.y > 0.42 ? 1.0 : 0.15;
+            droneState.vel.addScaledVector(forwardDir, ctrl.pitch * moveAccel * airborneFactor * dt);
+            droneState.vel.addScaledVector(rightDir, ctrl.roll * moveAccel * airborneFactor * dt);
+
+            // Horizontal air resistance
+            const horizDamping = Math.pow(0.08, dt);
+            droneState.vel.x *= horizDamping;
+            droneState.vel.z *= horizDamping;
+
+            // Update Position
+            droneState.pos.addScaledVector(droneState.vel, dt);
+
+            // Ground & Ceiling Clamp
+            if (droneState.pos.y < 0.35) {
+                droneState.pos.y = 0.35;
+                if (droneState.vel.y < 0) droneState.vel.y = 0;
+            }
+            if (droneState.pos.y > 25) {
+                droneState.pos.y = 25;
+                if (droneState.vel.y > 0) droneState.vel.y = 0;
+            }
+
+            // World Boundary Clamp
+            droneState.pos.x = Math.max(-95, Math.min(95, droneState.pos.x));
+            droneState.pos.z = Math.max(-200, Math.min(45, droneState.pos.z));
+
+            // Smooth Visual Pitch/Roll Tilt
+            const targetPitchTilt = -ctrl.pitch * 0.32;
+            const targetRollTilt = -ctrl.roll * 0.32;
+            droneState.pitchTilt += (targetPitchTilt - droneState.pitchTilt) * 10 * dt;
+            droneState.rollTilt += (targetRollTilt - droneState.rollTilt) * 10 * dt;
+
+            // Apply to Three.js Drone Mesh
+            droneGroup.position.copy(droneState.pos);
+            droneGroup.rotation.order = 'YXZ';
+            droneGroup.rotation.y = droneState.yaw;
+            droneGroup.rotation.x = droneState.pitchTilt;
+            droneGroup.rotation.z = droneState.rollTilt;
+
+            // Spin Propellers
+            const spinSpeed = (droneState.pos.y > 0.4 || Math.abs(ctrl.throttle) > 0.1) ? 35 : 4;
+            propellers.forEach((p, idx) => {
+                p.rotation.y += (idx % 2 === 0 ? 1 : -1) * spinSpeed * dt;
+            });
+
+            // Ground Shadow Ring
+            droneShadowMesh.position.set(droneState.pos.x, 0.04, droneState.pos.z);
+            const shadowScale = Math.max(0.4, 1.1 - (droneState.pos.y / 25) * 0.6);
+            droneShadowMesh.scale.set(shadowScale, shadowScale, 1);
+
+            // Invulnerability Blink Effect
+            if (droneState.invulnerableTimer > 0) {
+                droneState.invulnerableTimer -= dt;
+                droneBodyMesh.material.color.setHex(
+                    Math.floor(droneState.invulnerableTimer * 12) % 2 === 0 ? 0xf87171 : 0xf8fafc
+                );
+            } else {
+                droneBodyMesh.material.color.setHex(0xf8fafc);
+            }
+
+            // Animate Moving Hazards (Stage 3)
+            const timeSec = performance.now() * 0.001;
+            movingHazards.forEach(hz => {
+                hz.mesh.position.x = hz.baseX + Math.sin(timeSec * hz.speed) * hz.rangeX;
+            });
+
+            // Check Terrain & Obstacle Collisions (Trees, Rocks, Pillars, Moving Bars)
+            checkObstacleCollisions();
+
+            // Check Hula Hoop Pass & Rim Collision
+            checkHulaHoops();
+
+            // Update Missiles, Incoming Hazards & Stage 5 Enemy Combat
+            updateMissilesAndCombat(dt);
+
+            // Update Mode Objectives (Tutorial or Mission)
+            if (appState.mode === 'practice') {
+                updateTutorialProgress(dt);
+            } else if (appState.mode === 'mission') {
+                updateMissionProgress(dt);
+            }
+
+            // Update 3D Guidance Arrow above Drone
+            updateGuidanceArrow();
+        }
+
+        function updateMissilesAndCombat(dt) {
+            const timeSec = performance.now() * 0.001;
+
+            // 1. Update Explosion Particles
+            for (let i = explosionParticles.length - 1; i >= 0; i--) {
+                const p = explosionParticles[i];
+                p.life -= dt;
+                p.mesh.position.addScaledVector(p.vel, dt);
+                p.mesh.material.opacity = Math.max(0, p.life / 0.65);
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    explosionParticles.splice(i, 1);
+                }
+            }
+
+            // 2. Update Player Missiles & Check Hit Detection against Enemy Drones / Incoming Missiles
+            for (let i = playerMissiles.length - 1; i >= 0; i--) {
+                const m = playerMissiles[i];
+                m.life -= dt;
+                m.pos.addScaledVector(m.vel, dt);
+                m.mesh.position.copy(m.pos);
+
+                let removeMissile = (m.life <= 0);
+
+                // Check hit against Enemy Combat Drones (Stage 5)
+                for (let j = 0; j < enemyDrones.length; j++) {
+                    const enemy = enemyDrones[j];
+                    if (!enemy.alive) continue;
+
+                    const dist3D = m.pos.distanceTo(enemy.pos);
+                    const altDiff = Math.abs(m.pos.y - enemy.pos.y);
+
+                    // Differentiated Hitbox Detection:
+                    // A) Center Bullseye Hit (정중앙 직격: dist3D <= 0.95m) -> Instant Takedown (100% Damage)
+                    if (dist3D <= 0.95 && altDiff <= 0.85) {
+                        enemy.hp = 0;
+                        enemy.alive = false;
+                        enemy.group.visible = false;
+                        appState.enemiesRemaining = Math.max(0, appState.enemiesRemaining - 1);
+                        appState.score += 500;
+                        playSoundEffect('explosion');
+                        createExplosionEffect(enemy.pos, 0xff1144, 18);
+                        showToast(`🎯 정중앙 직격! 적 드론 즉시 격추! (+500점, 남은 적: ${appState.enemiesRemaining}기)`, 'border-emerald-400');
+                        removeMissile = true;
+                        break;
+                    }
+                    // B) Peripheral Outer Rotor/Frame Hit (주변부 피격: 0.95m < dist3D <= 2.25m) -> 50% Damage (Requires additional attack)
+                    else if (dist3D <= 2.25 && altDiff <= 1.35) {
+                        enemy.hp -= 50;
+                        removeMissile = true;
+
+                        if (enemy.hp > 0) {
+                            appState.score += 150;
+                            playSoundEffect('crash');
+                            createExplosionEffect(m.pos, 0xfacc15, 8);
+                            // Visual damage feedback on enemy drone
+                            enemy.outerRing.material.color.setHex(0xfacc15);
+                            enemy.coreMesh.material.color.setHex(0xf97316);
+                            enemy.group.rotation.z = 0.28;
+                            showToast('💥 주변부 피격! (적 내구도 50% 감소 - 격추하려면 추가 공격이 필요합니다!)', 'border-amber-400');
+                        } else {
+                            enemy.alive = false;
+                            enemy.group.visible = false;
+                            appState.enemiesRemaining = Math.max(0, appState.enemiesRemaining - 1);
+                            appState.score += 350;
+                            playSoundEffect('explosion');
+                            createExplosionEffect(enemy.pos, 0xf97316, 16);
+                            showToast(`🔥 추가 타격 성공! 적 드론 격추! (+350점, 남은 적: ${appState.enemiesRemaining}기)`, 'border-emerald-400');
+                        }
+                        break;
+                    }
+                }
+
+                // Also allow player missiles to intercept incoming enemy missiles
+                if (!removeMissile) {
+                    for (let k = enemyMissiles.length - 1; k >= 0; k--) {
+                        const em = enemyMissiles[k];
+                        if (m.pos.distanceTo(em.pos) < 1.2) {
+                            createExplosionEffect(em.pos, 0x38bdf8, 10);
+                            playSoundEffect('explosion');
+                            scene.remove(em.mesh);
+                            enemyMissiles.splice(k, 1);
+                            appState.score += 100;
+                            showToast('🛡️ 날아오는 적 미사일 요격 성공! (+100점)', 'border-sky-400');
+                            removeMissile = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (removeMissile) {
+                    scene.remove(m.mesh);
+                    playerMissiles.splice(i, 1);
+                }
+            }
+
+            // 3. Stage 4 Incoming Missile Spawner
+            if (appState.mode === 'mission' && appState.stage === 4) {
+                missileSpawnTimer += dt;
+                if (missileSpawnTimer >= 1.35) {
+                    missileSpawnTimer = 0;
+                    // Spawn an incoming missile ahead of the player flying toward the player's corridor
+                    const spawnZ = Math.max(-165, droneState.pos.z - 55 - Math.random() * 20);
+                    const spawnX = droneState.pos.x + (Math.random() - 0.5) * 14;
+                    const spawnY = Math.max(2.0, Math.min(12.0, droneState.pos.y + (Math.random() - 0.5) * 3.5));
+                    const spawnPos = new THREE.Vector3(spawnX, spawnY, spawnZ);
+
+                    const targetPos = droneState.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, 0, 0));
+                    const dir = targetPos.sub(spawnPos).normalize();
+                    const mesh = spawnMissileMesh(spawnPos, dir, false);
+
+                    enemyMissiles.push({
+                        mesh,
+                        pos: spawnPos,
+                        vel: dir.multiplyScalar(22),
+                        life: 4.5
+                    });
+                }
+            }
+
+            // 4. Stage 5 Enemy Combat Drone Patrol & Return Fire
+            if (appState.mode === 'mission' && appState.stage === 5) {
+                enemyDrones.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    enemy.pos.x = enemy.baseX + Math.sin(timeSec * enemy.speed + enemy.phase) * enemy.patrolRange;
+                    enemy.pos.y = enemy.baseY + Math.cos(timeSec * 1.2 + enemy.phase) * 0.8;
+                    enemy.group.position.copy(enemy.pos);
+                    enemy.bullseyeRing.rotation.y += 2.5 * dt;
+
+                    // Enemy fires missile toward player if within 55m
+                    enemy.fireCooldown -= dt;
+                    const distToPlayer = enemy.pos.distanceTo(droneState.pos);
+                    if (enemy.fireCooldown <= 0 && distToPlayer < 55) {
+                        enemy.fireCooldown = 3.2 + Math.random() * 2.0;
+                        const dir = droneState.pos.clone().sub(enemy.pos).normalize();
+                        const spawnPos = enemy.pos.clone().addScaledVector(dir, 1.5);
+                        const mesh = spawnMissileMesh(spawnPos, dir, false);
+                        enemyMissiles.push({
+                            mesh,
+                            pos: spawnPos,
+                            vel: dir.multiplyScalar(18),
+                            life: 4.5
+                        });
+                    }
+                });
+            }
+
+            // 5. Update Incoming Enemy Missiles & Check Player Hit
+            for (let i = enemyMissiles.length - 1; i >= 0; i--) {
+                const em = enemyMissiles[i];
+                em.life -= dt;
+                em.pos.addScaledVector(em.vel, dt);
+                em.mesh.position.copy(em.pos);
+
+                if (em.pos.distanceTo(droneState.pos) < 1.25) {
+                    createExplosionEffect(droneState.pos, 0xef4444, 14);
+                    scene.remove(em.mesh);
+                    enemyMissiles.splice(i, 1);
+                    if (droneState.invulnerableTimer <= 0) {
+                        applyDroneDamage(35, '날아오는 미사일 피격! 내구도 -35%');
+                    }
+                    continue;
+                }
+
+                if (em.life <= 0 || em.pos.y < 0.2) {
+                    scene.remove(em.mesh);
+                    enemyMissiles.splice(i, 1);
+                }
+            }
+        }
+
+        function checkObstacleCollisions() {
+            if (droneState.invulnerableTimer > 0) return;
+
+            const dxPos = droneState.pos.x;
+            const dyPos = droneState.pos.y;
+            const dzPos = droneState.pos.z;
+            const droneRadius = 0.85;
+
+            // 1. Cylindrical/Spherical Colliders (Trees, Rocks, Hazard Pillars)
+            for (let i = 0; i < terrainColliders.length; i++) {
+                const col = terrainColliders[i];
+                if (dyPos >= col.minY - 0.3 && dyPos <= col.maxY + 0.4) {
+                    const distXZ = Math.hypot(dxPos - col.x, dzPos - col.z);
+                    if (distXZ < col.radius + droneRadius) {
+                        // Push drone outward
+                        const nx = (dxPos - col.x) / (distXZ || 1);
+                        const nz = (dzPos - col.z) / (distXZ || 1);
+                        droneState.vel.x = nx * 8;
+                        droneState.vel.z = nz * 8;
+                        applyDroneDamage(col.damage, `${col.type} 충돌! 내구도 -${col.damage}%`);
+                        return;
+                    }
+                }
+            }
+
+            // 2. Moving Hazard Bars (Stage 3)
+            for (let i = 0; i < movingHazards.length; i++) {
+                const hz = movingHazards[i];
+                const barX = hz.mesh.position.x;
+                if (
+                    Math.abs(dxPos - barX) < hz.halfW + droneRadius &&
+                    Math.abs(dyPos - hz.y) < hz.halfH + 0.4 &&
+                    Math.abs(dzPos - hz.z) < 0.7 + droneRadius
+                ) {
+                    droneState.vel.z = 8;
+                    applyDroneDamage(35, '움직이는 장애물 충돌! 내구도 -35%');
+                    return;
+                }
+            }
+        }
+
+        function checkHulaHoops() {
+            for (let i = 0; i < missionHoops.length; i++) {
+                const hoop = missionHoops[i];
+                // Transform drone position into hoop's local space
+                const localPos = droneState.pos.clone().sub(hoop.pos);
+                localPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -hoop.rotY);
+
+                const radialDist = Math.hypot(localPos.x, localPos.y);
+                const zDist = Math.abs(localPos.z);
+
+                // Check Rim Collision (hitting the physical hula hoop frame)
+                if (zDist < 0.55 && Math.abs(radialDist - hoop.radius) < 0.65) {
+                    if (droneState.invulnerableTimer <= 0) {
+                        droneState.vel.multiplyScalar(-0.6);
+                        applyDroneDamage(25, '훌라후프 테두리 충돌! 중앙으로 통과하세요 (-25%)');
+                    }
+                }
+
+                // Check Clean Pass Through Inner Hole
+                if (zDist < 1.1 && radialDist < hoop.radius - 0.55) {
+                    if (appState.mode === 'practice') {
+                        if (!hoop.passed) {
+                            hoop.passed = true;
+                            appState.score += 150;
+                            playSoundEffect('ring');
+                            showToast('⭕ 연습용 훌라후프 통과! +150점', 'border-emerald-400');
+                            highlightActiveHoop();
+                            // Reset hoop after 4 seconds for endless practice
+                            setTimeout(() => {
+                                hoop.passed = false;
+                                highlightActiveHoop();
+                            }, 4000);
+                        }
+                    } else if (appState.mode === 'mission') {
+                        if (i === appState.currentHoopIndex && !hoop.passed) {
+                            hoop.passed = true;
+                            appState.currentHoopIndex++;
+                            appState.score += 300;
+                            playSoundEffect('ring');
+                            highlightActiveHoop();
+
+                            if (appState.currentHoopIndex >= appState.totalHoops) {
+                                appState.allHoopsCleared = true;
+                                showToast('🎉 모든 훌라후프 통과! 초록색 착륙장으로 착륙하세요!', 'border-emerald-400');
+                            } else {
+                                showToast(`⭕ ${appState.currentHoopIndex}/${appState.totalHoops} 훌라후프 통과! (+300점)`, 'border-amber-400');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function applyDroneDamage(amount, reasonText) {
+            droneState.invulnerableTimer = 1.4;
+            droneState.crashCount++;
+            droneState.hp = Math.max(0, droneState.hp - amount);
+
+            playSoundEffect('crash');
+            showToast(`💥 ${reasonText}`, 'border-rose-500');
+
+            // Screen red flash
+            const overlay = document.getElementById('damage-overlay');
+            overlay.classList.remove('damage-flash');
+            void overlay.offsetWidth;
+            overlay.classList.add('damage-flash');
+
+            updateHpHud();
+
+            // Check if destroyed (HP <= 0 or crashCount >= maxCrashes)
+            if (droneState.hp <= 0 || droneState.crashCount >= droneState.maxCrashes) {
+                triggerDroneDestroyed(reasonText);
+            }
+        }
+
+        function updateHpHud() {
+            const hpBar = document.getElementById('hud-hp-bar');
+            const hpText = document.getElementById('hud-hp-text');
+            const crashText = document.getElementById('hud-crash-count');
+
+            hpText.textContent = `${droneState.hp}%`;
+            crashText.textContent = `(충돌 ${droneState.crashCount}/${droneState.maxCrashes}회)`;
+            hpBar.style.width = `${droneState.hp}%`;
+
+            if (droneState.hp > 60) {
+                hpBar.className = 'h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300';
+                hpText.className = 'font-black text-emerald-400';
+            } else if (droneState.hp > 30) {
+                hpBar.className = 'h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-300';
+                hpText.className = 'font-black text-amber-400';
+            } else {
+                hpBar.className = 'h-full bg-gradient-to-r from-rose-600 to-red-400 rounded-full transition-all duration-300';
+                hpText.className = 'font-black text-rose-400';
+            }
+        }
+
+        function triggerDroneDestroyed(lastReason) {
+            appState.isPaused = true;
+            updateMotorSound();
+
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('crash-modal').classList.remove('hidden');
+            document.getElementById('clear-modal').classList.add('hidden');
+            document.getElementById('guide-modal').classList.add('hidden');
+
+            document.getElementById('crash-modal-desc').innerHTML = `
+                <b>[${lastReason}]</b><br>
+                나무·바위·장애물 충돌로 인해 기체 내구도가 모두 소진되었습니다(총 ${droneState.crashCount}회 충돌).<br>
+                새롭게 수리하여 처음부터 다시 비행을 시작합니다!
+            `;
+        }
+
+        /***********************************************************************
+         * 8. TUTORIAL (FREE PRACTICE) & MISSION PROGRESSION
+         ***********************************************************************/
+        function updateTutorialProgress(dt) {
+            const stepEl = document.getElementById('hud-mission-step');
+            const titleEl = document.getElementById('hud-objective-title');
+            const progBar = document.getElementById('hud-progress-bar');
+
+            if (tutorialMarkerMesh) {
+                tutorialMarkerMesh.rotation.y += 1.8 * dt;
+                tutorialMarkerMesh.visible = (appState.tutorialStep === 3);
+            }
+
+            if (appState.tutorialStep === 1) {
+                // Step 1: Takeoff to 3.5m+
+                stepEl.textContent = '튜토리얼 1 / 5단계';
+                titleEl.textContent = '🛫 [이륙 훈련] 왼쪽 스틱을 위로 밀어(W키) 고도 3.5m 이상 상승하세요!';
+                const ratio = Math.min(100, (droneState.pos.y / 3.5) * 100);
+                progBar.style.width = `${ratio}%`;
+
+                if (droneState.pos.y >= 3.5) {
+                    appState.tutorialStep = 2;
+                    appState.hoverTimer = 0;
+                    appState.score += 100;
+                    playSoundEffect('ring');
+                    showToast('✅ 1단계 이륙 성공! 이제 고도를 유지해보세요.', 'border-emerald-400');
+                }
+            } else if (appState.tutorialStep === 2) {
+                // Step 2: Hover between 2.5m and 7.5m for 3 seconds
+                stepEl.textContent = '튜토리얼 2 / 5단계';
+                titleEl.textContent = '🛸 [호버링 훈련] 고도 2.5m ~ 7.5m 사이에서 3초 동안 높이를 유지하세요!';
+                if (droneState.pos.y >= 2.5 && droneState.pos.y <= 7.5) {
+                    appState.hoverTimer += dt;
+                }
+                const ratio = Math.min(100, (appState.hoverTimer / 3.0) * 100);
+                progBar.style.width = `${ratio}%`;
+
+                if (appState.hoverTimer >= 3.0) {
+                    appState.tutorialStep = 3;
+                    appState.score += 150;
+                    playSoundEffect('ring');
+                    showToast('✅ 2단계 호버링 성공! 전방의 초록색 링으로 이동하세요.', 'border-emerald-400');
+                }
+            } else if (appState.tutorialStep === 3) {
+                // Step 3: Pitch & Roll to the green marker at (0, 4.5, -18)
+                stepEl.textContent = '튜토리얼 3 / 5단계';
+                titleEl.textContent = '➡️ [전후좌우 이동] 오른쪽 스틱(방향키 ↑↓←→)으로 전방의 초록색 링까지 이동하세요!';
+                const dist = droneState.pos.distanceTo(new THREE.Vector3(0, 4.5, -18));
+                const ratio = Math.max(0, Math.min(100, ((20 - dist) / 17.5) * 100));
+                progBar.style.width = `${ratio}%`;
+
+                if (dist < 3.0) {
+                    appState.tutorialStep = 4;
+                    appState.yawAccumulated = 0;
+                    appState.score += 200;
+                    playSoundEffect('ring');
+                    showToast('✅ 3단계 이동 성공! 이제 제자리 회전을 연습합니다.', 'border-emerald-400');
+                }
+            } else if (appState.tutorialStep === 4) {
+                // Step 4: Yaw rotation (Left Stick Left/Right or A/D)
+                stepEl.textContent = '튜토리얼 4 / 5단계';
+                titleEl.textContent = '🔄 [회전 비행] 왼쪽 스틱을 좌·우로 움직여(A / D키) 드론 방향을 한 바퀴 회전해보세요!';
+                const ratio = Math.min(100, (appState.yawAccumulated / 3.0) * 100);
+                progBar.style.width = `${ratio}%`;
+
+                if (appState.yawAccumulated >= 3.0) {
+                    appState.tutorialStep = 5;
+                    appState.score += 200;
+                    playSoundEffect('ring');
+                    showToast('✅ 4단계 회전 성공! 출발지 착륙장(H)에 안전하게 착륙하세요.', 'border-emerald-400');
+                }
+            } else if (appState.tutorialStep === 5) {
+                // Step 5: Safe landing back on the H pad (0, 0, 0)
+                stepEl.textContent = '튜토리얼 5 / 5단계';
+                titleEl.textContent = '🛬 [착륙 미션] 파란색 H 착륙장 위로 이동한 뒤 왼쪽 스틱을 내려(S키) 착륙하세요!';
+                const distXZ = Math.hypot(droneState.pos.x, droneState.pos.z);
+                const ratio = Math.max(10, Math.min(95, (1 - distXZ / 22) * 100));
+                progBar.style.width = `${ratio}%`;
+
+                if (distXZ < 2.8 && droneState.pos.y <= 0.55 && droneState.vel.length() < 2.5) {
+                    appState.tutorialStep = 6;
+                    appState.score += 350;
+                    progBar.style.width = '100%';
+                    playSoundEffect('clear');
+                    showToast('🎉 기초 5단계 튜토리얼 완주! 이제 자유롭게 비행하며 훌라후프를 통과해보세요!', 'border-amber-400');
+                    // Save practice completion record
+                    saveRankingRecord({
+                        name: appState.pilotName || '익명 파일럿',
+                        modeKey: 'PRACTICE',
+                        modeLabel: '자유연습 완주',
+                        score: appState.score + droneState.hp * 5,
+                        time: appState.elapsedTime,
+                        hp: droneState.hp
+                    });
+                }
+            } else {
+                stepEl.textContent = '자유 연습 비행 중';
+                titleEl.textContent = '✨ 자유 비행 시간! 나무와 바위를 피해 훌라후프 링을 자유롭게 통과해보세요.';
+                progBar.style.width = '100%';
+            }
+        }
+
+        function updateMissionProgress(dt) {
+            const stepEl = document.getElementById('hud-mission-step');
+            const titleEl = document.getElementById('hud-objective-title');
+            const progBar = document.getElementById('hud-progress-bar');
+
+            const remaining = Math.max(0, appState.timeLimit - appState.elapsedTime);
+            if (remaining <= 0) {
+                triggerDroneDestroyed('제한 시간 초과!');
+                return;
+            }
+
+            if (appState.stage === 5) {
+                // Stage 5: Destroy all 6 Enemy Drones
+                const destroyed = appState.totalEnemies - appState.enemiesRemaining;
+                const ratio = (destroyed / Math.max(1, appState.totalEnemies)) * 100;
+                progBar.style.width = `${ratio}%`;
+                stepEl.textContent = `적 드론 격추: ${destroyed} / ${appState.totalEnemies}기`;
+                titleEl.textContent = `⚔️ 적 드론과 고도·방향을 맞춘 뒤 미사일(Space)을 발사하세요! (정중앙 직격 시 즉시 격추)`;
+
+                if (appState.enemiesRemaining <= 0) {
+                    progBar.style.width = '100%';
+                    completeMissionStage();
+                }
+                return;
+            }
+
+            if (appState.stage === 4) {
+                // Stage 4: Evade incoming missiles and reach Goal Pad at Z = -155
+                const totalDist = Math.abs(goalPadPos.z);
+                const covered = Math.max(0, Math.min(totalDist, -droneState.pos.z));
+                const ratio = (covered / totalDist) * 92;
+                progBar.style.width = `${ratio}%`;
+
+                const distXZ = Math.hypot(droneState.pos.x - goalPadPos.x, droneState.pos.z - goalPadPos.z);
+                if (distXZ > 15) {
+                    stepEl.textContent = `목적지까지 ${Math.round(distXZ)}m`;
+                    titleEl.textContent = `🚀 날아오는 미사일과 장애물을 회피하며 전방 초록색 착륙장(G)까지 비행하세요!`;
+                } else {
+                    stepEl.textContent = '최종 단계: 목적지 착륙';
+                    titleEl.textContent = '🛬 목적지 도착! 미사일을 피해 초록색 착륙장(G) 위에 안전하게 착륙하세요!';
+                    if (distXZ < 3.2 && droneState.pos.y <= 0.65 && droneState.vel.length() < 3.5) {
+                        progBar.style.width = '100%';
+                        completeMissionStage();
+                    }
+                }
+                return;
+            }
+
+            const ratio = (appState.currentHoopIndex / (appState.totalHoops + 1)) * 100;
+            progBar.style.width = `${ratio}%`;
+
+            if (!appState.allHoopsCleared) {
+                stepEl.textContent = `코스 진행: ${appState.currentHoopIndex} / ${appState.totalHoops}`;
+                titleEl.textContent = `⭕ 노란색 빛이 나는 ${appState.currentHoopIndex + 1}번 훌라후프를 통과하세요! (장애물 주의)`;
+            } else {
+                stepEl.textContent = '최종 단계: 착륙';
+                titleEl.textContent = '🛬 모든 훌라후프 통과 완료! 전방의 초록색 골인 착륙장(G)에 착륙하세요!';
+                progBar.style.width = '92%';
+
+                const distXZ = Math.hypot(droneState.pos.x - goalPadPos.x, droneState.pos.z - goalPadPos.z);
+                if (distXZ < 3.0 && droneState.pos.y <= 0.65 && droneState.vel.length() < 3.5) {
+                    progBar.style.width = '100%';
+                    completeMissionStage();
+                }
+            }
+        }
+
+        function completeMissionStage() {
+            appState.isPaused = true;
+            updateMotorSound();
+            playSoundEffect('clear');
+
+            // Record stage completion for unlock system
+            appState.clearedStages[appState.stage] = true;
+            if (appState.pilotName) {
+                appState.pilotProgressMap[appState.pilotName] = appState.clearedStages;
+            }
+            updateStageUnlockUI();
+
+            const timeBonus = Math.round(Math.max(0, appState.timeLimit - appState.elapsedTime) * 15);
+            const hpBonus = droneState.hp * 10;
+            const finalScore = appState.score + timeBonus + hpBonus;
+            appState.score = finalScore;
+
+            const modeKey = `STAGE${appState.stage}`;
+            const modeLabels = {
+                1: '1단계 훌라후프',
+                2: '2단계 슬라럼',
+                3: '3단계 레이스',
+                4: '4단계 미사일회피',
+                5: '5단계 드론교전'
+            };
+            const modeLabel = modeLabels[appState.stage] || `STAGE ${appState.stage}`;
+
+            saveRankingRecord({
+                name: appState.pilotName || '익명 파일럿',
+                modeKey,
+                modeLabel,
+                score: finalScore,
+                time: appState.elapsedTime,
+                hp: droneState.hp
+            });
+
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('clear-modal').classList.remove('hidden');
+            document.getElementById('crash-modal').classList.add('hidden');
+            document.getElementById('guide-modal').classList.add('hidden');
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('notice-modal').classList.add('hidden');
+
+            document.getElementById('clear-badge').textContent = `STAGE ${appState.stage} CLEAR`;
+            document.getElementById('clear-title').textContent = `${modeLabel} 미션 성공!`;
+            document.getElementById('clear-pilot').textContent = appState.pilotName;
+            document.getElementById('clear-time').textContent = formatTime(appState.elapsedTime);
+            document.getElementById('clear-hp-bonus').textContent = `+${hpBonus}점 (내구도 ${droneState.hp}%)`;
+            document.getElementById('clear-total-score').textContent = `${finalScore.toLocaleString()}점`;
+
+            const nextBtn = document.getElementById('btn-next-stage');
+            const canGoNext = (appState.stage < 3) || (appState.stage >= 3 && appState.stage < 5 && isStage4And5Unlocked());
+            if (canGoNext) {
+                nextBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.add('hidden');
+            }
+        }
+
+        /***********************************************************************
+         * 9. CAMERA MODES, RADAR MINI-MAP & HUD TELEMETRY
+         ***********************************************************************/
+        function getActiveTargetPosition() {
+            if (appState.mode === 'practice') {
+                if (appState.tutorialStep === 3) return new THREE.Vector3(0, 4.5, -18);
+                if (appState.tutorialStep === 5) return new THREE.Vector3(0, 0.5, 0);
+                const nextHoop = missionHoops.find(h => !h.passed) || missionHoops[0];
+                return nextHoop ? nextHoop.pos : new THREE.Vector3(0, 4, -20);
+            } else if (appState.stage === 5) {
+                // Point to nearest alive enemy drone
+                let nearest = null;
+                let minDist = Infinity;
+                enemyDrones.forEach(e => {
+                    if (e.alive) {
+                        const d = droneState.pos.distanceTo(e.pos);
+                        if (d < minDist) {
+                            minDist = d;
+                            nearest = e.pos;
+                        }
+                    }
+                });
+                return nearest || goalPadPos;
+            } else if (appState.stage === 4) {
+                return goalPadPos;
+            } else {
+                if (!appState.allHoopsCleared && missionHoops[appState.currentHoopIndex]) {
+                    return missionHoops[appState.currentHoopIndex].pos;
+                }
+                return goalPadPos;
+            }
+        }
+
+        function updateGuidanceArrow() {
+            const targetPos = getActiveTargetPosition();
+            targetArrowGroup.position.set(droneState.pos.x, droneState.pos.y + 1.15, droneState.pos.z);
+            const angle = Math.atan2(droneState.pos.x - targetPos.x, droneState.pos.z - targetPos.z);
+            targetArrowGroup.rotation.y = angle;
+        }
+
+        function updateCamera(dt) {
+            if (appState.mode === 'lobby') {
+                // Orbit smoothly around the drone in lobby
+                const t = performance.now() * 0.0004;
+                camera.position.set(Math.sin(t) * 14, 7.5, Math.cos(t) * 14);
+                camera.lookAt(0, 2, -10);
+                return;
+            }
+
+            if (appState.cameraMode === 0) {
+                // Mode 0: 3rd Person Chase Cam behind drone
+                const offset = new THREE.Vector3(
+                    Math.sin(droneState.yaw) * 6.8,
+                    2.8,
+                    Math.cos(droneState.yaw) * 6.8
+                );
+                const desiredPos = droneState.pos.clone().add(offset);
+                desiredPos.y = Math.max(1.2, desiredPos.y);
+                camera.position.lerp(desiredPos, Math.min(1, dt * 8));
+
+                const lookTarget = droneState.pos.clone().add(
+                    new THREE.Vector3(-Math.sin(droneState.yaw) * 6, 0.4, -Math.cos(droneState.yaw) * 6)
+                );
+                camera.lookAt(lookTarget);
+            } else if (appState.cameraMode === 1) {
+                // Mode 1: First Person View (FPV)
+                const fpvOffset = new THREE.Vector3(
+                    -Math.sin(droneState.yaw) * 0.65,
+                    0.22,
+                    -Math.cos(droneState.yaw) * 0.65
+                );
+                camera.position.copy(droneState.pos).add(fpvOffset);
+                const lookTarget = droneState.pos.clone().add(
+                    new THREE.Vector3(
+                        -Math.sin(droneState.yaw) * 15,
+                        droneState.pitchTilt * 6,
+                        -Math.cos(droneState.yaw) * 15
+                    )
+                );
+                camera.lookAt(lookTarget);
+            } else {
+                // Mode 2: High Angle Bird's Eye Follow Cam
+                const highOffset = new THREE.Vector3(
+                    Math.sin(droneState.yaw) * 11,
+                    9.5,
+                    Math.cos(droneState.yaw) * 11
+                );
+                camera.position.lerp(droneState.pos.clone().add(highOffset), Math.min(1, dt * 6));
+                camera.lookAt(droneState.pos);
+            }
+        }
+
+        function switchCameraMode() {
+            appState.cameraMode = (appState.cameraMode + 1) % 3;
+            const labels = ['3인칭 추적', '1인칭 FPV', '상공 항공뷰'];
+            document.getElementById('hud-cam-label').textContent = labels[appState.cameraMode];
+            playSoundEffect('click');
+            showToast(`📷 카메라 시점: ${labels[appState.cameraMode]}`, 'border-sky-400');
+        }
+
+        function renderMiniMap() {
+            const canvas = document.getElementById('minimap-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const scale = 1.1; // 1 meter = 1.1 px
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Radar rings
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+            ctx.lineWidth = 1;
+            [20, 40].forEach(r => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // Helper to convert world XZ to radar XY relative to drone position & heading
+            function toRadar(wx, wz) {
+                const dx = wx - droneState.pos.x;
+                const dz = wz - droneState.pos.z;
+                // Rotate by drone yaw so UP on radar is always drone's forward direction
+                const cos = Math.cos(-droneState.yaw);
+                const sin = Math.sin(-droneState.yaw);
+                const rx = dx * cos - dz * sin;
+                const rz = dx * sin + dz * cos;
+                return {
+                    x: cx + rx * scale,
+                    y: cy + rz * scale
+                };
+            }
+
+            // Draw Trees & Rocks
+            terrainColliders.forEach(col => {
+                const p = toRadar(col.x, col.z);
+                if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) return;
+                ctx.fillStyle = col.type === '나무' ? '#22c55e' : col.type === '바위' ? '#94a3b8' : '#ef4444';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Hoops
+            missionHoops.forEach((hoop, idx) => {
+                const p = toRadar(hoop.pos.x, hoop.pos.z);
+                if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) return;
+                ctx.fillStyle = hoop.passed ? '#10b981' : idx === appState.currentHoopIndex ? '#facc15' : '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, idx === appState.currentHoopIndex ? 4.5 : 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Enemy Combat Drones on Radar (Stage 5)
+            enemyDrones.forEach(enemy => {
+                if (!enemy.alive) return;
+                const p = toRadar(enemy.pos.x, enemy.pos.z);
+                if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) return;
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Incoming Enemy Missiles on Radar
+            enemyMissiles.forEach(em => {
+                const p = toRadar(em.pos.x, em.pos.z);
+                if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) return;
+                ctx.fillStyle = '#fb923c';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Goal Pad
+            const gp = toRadar(goalPadPos.x, goalPadPos.z);
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(gp.x - 4, gp.y - 4, 8, 8);
+
+            // Draw Player Drone Triangle at Center
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 5);
+            ctx.lineTo(cx - 4, cy + 4);
+            ctx.lineTo(cx + 4, cy + 4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function updateTelemetryHUD() {
+            const altMeters = Math.max(0, droneState.pos.y - 0.35);
+            const speedKmh = Math.round(droneState.vel.length() * 3.6);
+
+            document.getElementById('hud-altitude-val').textContent = `${altMeters.toFixed(1)}m`;
+            document.getElementById('hud-altitude-fill').style.height = `${Math.min(100, (altMeters / 20) * 100)}%`;
+            document.getElementById('hud-speed-val').textContent = `${speedKmh}km/h`;
+            document.getElementById('hud-score').textContent = `${appState.score.toLocaleString()}점`;
+
+            const targetPos = getActiveTargetPosition();
+            const dist = Math.round(droneState.pos.distanceTo(targetPos));
+            document.getElementById('hud-target-dist').textContent = `목표 거리: ${dist}m`;
+
+            if (appState.mode === 'mission') {
+                const rem = Math.max(0, appState.timeLimit - appState.elapsedTime);
+                document.getElementById('hud-timer').textContent = `남은시간 ${formatTime(rem)}`;
+            } else {
+                document.getElementById('hud-timer').textContent = formatTime(appState.elapsedTime);
+            }
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = (sec % 60).toFixed(1);
+            return `${String(m).padStart(2, '0')}:${s.padStart(4, '0')}`;
+        }
+
+        let toastTimeout = null;
+        function showToast(message, borderClass = 'border-amber-400') {
+            const toast = document.getElementById('hud-toast');
+            toast.textContent = message;
+            toast.className = `absolute top-4 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-2xl bg-slate-900/95 border-2 ${borderClass} text-white font-black text-xs sm:text-sm shadow-2xl z-30`;
+            toast.classList.remove('hidden');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2600);
+        }
+
+        /***********************************************************************
+         * 10. GAME FLOW CONTROLS & ANIMATION LOOP
+         ***********************************************************************/
+        function startGameMode(mode, stage) {
+            initAudio();
+
+            // 1. Strict Nickname Validation & Confirmation Check
+            const inputEl = document.getElementById('pilot-nickname');
+            const currentTyped = inputEl ? inputEl.value.trim() : '';
+
+            if (!currentTyped) {
+                requestNicknameConfirm({ mode, stage });
+                return;
+            }
+
+            if (!appState.pilotConfirmed || appState.pilotName !== currentTyped) {
+                // Prompt the confirmation modal with the typed nickname before allowing gameplay
+                requestNicknameConfirm({ mode, stage });
+                return;
+            }
+
+            // 2. Stage 4 & 5 Unlock Check (Requires Stage 1, 2, and 3 all cleared)
+            if (mode === 'mission' && (stage === 4 || stage === 5) && !isStage4And5Unlocked()) {
+                const c1 = appState.clearedStages[1] ? '✅ 완료' : '❌ 미완료';
+                const c2 = appState.clearedStages[2] ? '✅ 완료' : '❌ 미완료';
+                const c3 = appState.clearedStages[3] ? '✅ 완료' : '❌ 미완료';
+                showNoticeModal(
+                    `🔒 STAGE ${stage} 잠김 안내`,
+                    `미션 4(미사일 회피)와 미션 5(적 드론 교전)는 <b>미션 1, 2, 3을 모두 완료한 조종사만</b> 참여할 수 있습니다!<br><br>` +
+                    `<div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-left space-y-1">` +
+                    `<div>• STAGE 1 (훌라후프 통과): <b>${c1}</b></div>` +
+                    `<div>• STAGE 2 (장애물 슬라럼): <b>${c2}</b></div>` +
+                    `<div>• STAGE 3 (드론 레이스): <b>${c3}</b></div>` +
+                    `</div>`,
+                    '🔒'
+                );
+                return;
+            }
+
+            appState.mode = mode;
+            appState.stage = stage;
+            appState.isPaused = false;
+            appState.elapsedTime = 0;
+            appState.score = 0;
+            appState.tutorialStep = 1;
+            appState.hoverTimer = 0;
+            appState.yawAccumulated = 0;
+            appState.timeLimit = stage === 1 ? 90 : stage === 2 ? 100 : stage === 3 ? 110 : stage === 4 ? 100 : 120;
+
+            resetDronePhysics();
+            buildEnvironment(mode, stage);
+
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('hud-screen').classList.remove('hidden');
+            closeAllModals();
+
+            document.getElementById('hud-pilot-name').textContent = appState.pilotName;
+            const badge = document.getElementById('hud-mode-badge');
+            if (mode === 'practice') {
+                badge.textContent = '자유 연습';
+                badge.className = 'px-2 py-0.5 text-[11px] font-black rounded-md bg-emerald-400 text-slate-950';
+                showToast('🛫 자유 연습 모드 시작! 5단계 튜토리얼을 따라해보세요.', 'border-emerald-400');
+            } else if (stage === 4) {
+                badge.textContent = 'STAGE 4 회피';
+                badge.className = 'px-2 py-0.5 text-[11px] font-black rounded-md bg-purple-400 text-slate-950';
+                showToast('🚀 STAGE 4 출발! 날아오는 미사일을 회피하여 도착지 착륙장으로 비행하세요!', 'border-purple-400');
+            } else if (stage === 5) {
+                badge.textContent = 'STAGE 5 교전';
+                badge.className = 'px-2 py-0.5 text-[11px] font-black rounded-md bg-fuchsia-400 text-slate-950';
+                showToast('⚔️ STAGE 5 교전 시작! 정중앙 직격 시 즉시 격추, 주변부 피격 시 추가 공격이 필요합니다!', 'border-fuchsia-400');
+            } else {
+                badge.textContent = `STAGE ${stage}`;
+                badge.className = 'px-2 py-0.5 text-[11px] font-black rounded-md bg-sky-400 text-slate-950';
+                showToast(`🚀 STAGE ${stage} 미션 비행 출발! 장애물을 피해 훌라후프를 통과하세요!`, 'border-sky-400');
+            }
+
+            playSoundEffect('ring');
+        }
+
+        function restartCurrentMode() {
+            playSoundEffect('click');
+            startGameMode(appState.mode, appState.stage);
+        }
+
+        function goNextStage() {
+            if (appState.stage < 3) {
+                startGameMode('mission', appState.stage + 1);
+            } else if (appState.stage >= 3 && appState.stage < 5 && isStage4And5Unlocked()) {
+                startGameMode('mission', appState.stage + 1);
+            } else {
+                returnToLobby();
+            }
+        }
+
+        function returnToLobby() {
+            playSoundEffect('click');
+            appState.mode = 'lobby';
+            appState.isPaused = false;
+            updateMotorSound();
+            closeAllModals();
+            document.getElementById('hud-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            renderLeaderboard();
+        }
+
+        function openControlGuideModal() {
+            playSoundEffect('click');
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('guide-modal').classList.remove('hidden');
+            document.getElementById('crash-modal').classList.add('hidden');
+            document.getElementById('clear-modal').classList.add('hidden');
+        }
+
+        function closeAllModals() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('guide-modal').classList.add('hidden');
+            document.getElementById('crash-modal').classList.add('hidden');
+            document.getElementById('clear-modal').classList.add('hidden');
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('notice-modal').classList.add('hidden');
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        let lastFrameTime = performance.now();
+        function animateLoop(now) {
+            requestAnimationFrame(animateLoop);
+
+            const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+            lastFrameTime = now;
+
+            if (appState.mode !== 'lobby' && !appState.isPaused) {
+                appState.elapsedTime += dt;
+                updatePhysicsAndCollisions(dt);
+                updateTelemetryHUD();
+                renderMiniMap();
+                updateMotorSound();
+            }
+
+            updateCamera(dt);
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            initThreeScene();
+            initInputControllers();
+            renderLeaderboard();
+            updateStageUnlockUI();
+            lastFrameTime = performance.now();
+            animateLoop(lastFrameTime);
+        };
+    </script>
+</body>
+</html>
