@@ -18,6 +18,9 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             font-family: 'Noto Sans KR', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
@@ -29,6 +32,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             z-index: 1;
             display: block;
         }
@@ -38,6 +42,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             z-index: 10;
             pointer-events: none;
         }
@@ -47,33 +52,36 @@
         /* Virtual Joystick Styling */
         .joystick-zone {
             position: relative;
-            width: 124px;
-            height: 124px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(30, 41, 59, 0.65) 0%, rgba(15, 23, 42, 0.85) 100%);
+            background: radial-gradient(circle, rgba(30, 41, 59, 0.55) 0%, rgba(15, 23, 42, 0.78) 100%);
             border: 3px solid rgba(56, 189, 248, 0.5);
             box-shadow: 0 0 20px rgba(14, 165, 233, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.2);
             touch-action: none;
         }
-        @media (min-width: 768px) and (min-height: 550px) {
+        @media (min-width: 1024px) and (min-height: 620px) {
             .joystick-zone {
-                width: 148px;
-                height: 148px;
+                width: 144px;
+                height: 144px;
             }
         }
         /* Landscape Optimization for Mobile & Tablets */
-        @media (orientation: landscape) and (max-height: 540px) {
+        @media (orientation: landscape) and (max-height: 580px) {
             .joystick-zone {
-                width: 106px;
-                height: 106px;
+                width: 96px;
+                height: 96px;
             }
             .joystick-knob {
-                width: 42px !important;
-                height: 42px !important;
+                width: 38px !important;
+                height: 38px !important;
             }
             .landscape-compact-pad {
-                padding-top: 0.35rem !important;
-                padding-bottom: 0.35rem !important;
+                padding: 0.35rem 0.6rem !important;
+            }
+            .landscape-hud-scale {
+                transform: scale(0.92);
+                transform-origin: top left;
             }
         }
         /* Portrait Orientation Advisory Banner */
@@ -190,88 +198,170 @@
         <span>📱 원활한 양손 조이스틱 조종을 위해 화면을 <b>가로모드(Landscape)</b>로 회전해 주세요!</span>
     </div>
 
-    <!-- ==================== LOBBY / MAIN MENU MODAL (LANDSCAPE OPTIMIZED) ==================== -->
-    <div id="lobby-screen" class="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden">
-        <div class="w-full max-w-6xl max-h-[96vh] flex flex-col bg-slate-900/95 border-2 border-sky-500/40 rounded-3xl shadow-2xl overflow-hidden">
-            <!-- Top Banner -->
+    <!-- ==================== STEP 1: ENTRY & NICKNAME SCREEN (입장 및 닉네임 설정 화면) ==================== -->
+    <div id="entry-screen" class="fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden">
+        <div class="w-full max-w-4xl max-h-[95dvh] flex flex-col bg-slate-900/95 border-2 border-sky-500/40 rounded-3xl shadow-2xl overflow-hidden">
+            <!-- Top Header Bar -->
             <div class="shrink-0 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-4 py-2.5 sm:px-6 sm:py-3.5 flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-2xl sm:text-3xl shadow-inner">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-xl sm:text-2xl shadow-inner">
                         🛸
                     </div>
                     <div>
-                        <span class="inline-block px-2 py-0.5 text-[11px] font-bold bg-amber-400 text-slate-950 rounded-full">
-                            초등 4~6학년 드론체험교실 · 가로모드 최적화
+                        <span class="inline-block px-2 py-0.5 text-[10px] sm:text-[11px] font-bold bg-amber-400 text-slate-950 rounded-full">
+                            STEP 1 / 3 · 게임 입장 및 조종사 등록
                         </span>
-                        <h1 class="text-lg sm:text-2xl font-black tracking-tight text-white leading-tight">
-                            3D 드론 비행 시뮬레이터
+                        <h1 class="text-base sm:text-xl font-black tracking-tight text-white leading-tight">
+                            어린이 드론 체험교실 · 3D 비행 시뮬레이터
                         </h1>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="btn-lobby-sound" onclick="toggleAudio()" class="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1.5 transition">
-                        <span id="lobby-sound-icon">🔊</span> <span id="lobby-sound-text">효과음 켜짐</span>
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button onclick="toggleFullscreen()" class="btn-fullscreen-toggle px-2.5 py-1.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-black text-xs flex items-center gap-1 transition shadow">
+                        <span>⛶</span> <span class="fs-label">전체화면</span>
                     </button>
-                    <button onclick="openControlGuideModal()" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 transition shadow">
+                    <button onclick="toggleAudio()" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1 transition">
+                        <span class="sound-icon-ui">🔊</span> <span class="sound-text-ui hidden sm:inline">효과음 켜짐</span>
+                    </button>
+                    <button onclick="openControlGuideModal()" class="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1 transition shadow">
+                        🎮 조종법 안내
+                    </button>
+                </div>
+            </div>
+
+            <!-- Entry Body (Landscape 12-Col Layout) -->
+            <div class="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-12 gap-4 items-center">
+                <!-- Left Info Visual (5 Cols) -->
+                <div class="col-span-12 md:col-span-5 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3 h-full">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-extrabold mb-2">
+                            ✨ 초등 4~6학년 맞춤형 드론 교육
+                        </div>
+                        <h2 class="text-base sm:text-lg font-black text-white leading-snug">
+                            나만의 드론 조종사 닉네임을 등록하고 비행 훈련장에 입장하세요!
+                        </h2>
+                        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                            웹페이지 상하단 주소창 가림 없이 쾌적하게 플레이하려면 우측 상단의 <b class="text-sky-300">[⛶ 전체화면]</b> 버튼을 눌러주세요.
+                        </p>
+                    </div>
+
+                    <div class="space-y-1.5 text-[11px] bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                        <div class="font-black text-amber-300">📌 진행 순서 안내</div>
+                        <div class="flex items-center gap-2 text-white font-bold">
+                            <span class="w-5 h-5 rounded-full bg-sky-500 text-slate-950 flex items-center justify-center text-[10px] font-black">1</span>
+                            <span>조종사 닉네임 설정 및 확인</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-black">2</span>
+                            <span>자유 연습 / 단계별 미션(1~5단계) 선택</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-black">3</span>
+                            <span>실전 드론 비행 플레이 및 랭킹 등록</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Nickname Setup Box (7 Cols) -->
+                <div id="nickname-box" class="col-span-12 md:col-span-7 bg-slate-800/90 border-2 border-sky-500/50 rounded-2xl p-4 sm:p-6 flex flex-col justify-center gap-3 h-full transition-colors">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <label for="pilot-nickname" class="text-sm sm:text-base font-black text-sky-300 flex items-center gap-1.5">
+                            <span>👨‍✈️ 조종사 닉네임 설정 <span class="text-rose-400">(필수)</span></span>
+                        </label>
+                        <span id="current-pilot-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30">
+                            ⚠️ 닉네임 입력 대기 중
+                        </span>
+                    </div>
+
+                    <p class="text-xs text-slate-300">
+                        학년·반·이름 또는 멋진 조종사 별명을 입력하세요. (최대 12자)
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-2.5 mt-1">
+                        <input id="pilot-nickname" type="text" maxlength="12" placeholder="예: 5학년1반홍길동 / 드론에이스"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-slate-700 focus:border-sky-400 focus:outline-none text-white font-black text-sm sm:text-base placeholder-slate-500"
+                            oninput="onNicknameInputChange(this.value)"
+                            onkeydown="if(event.key==='Enter') requestNicknameConfirm()" />
+                        <button onclick="requestNicknameConfirm()" class="shrink-0 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-400 hover:to-blue-400 active:scale-95 text-slate-950 font-black text-sm sm:text-base transition shadow-lg shadow-sky-500/30 flex items-center justify-center gap-1.5">
+                            <span>모드 선택 입장하기</span> <span>→</span>
+                        </button>
+                    </div>
+
+                    <p id="nickname-helper" class="text-xs text-slate-400 mt-1">
+                        💡 닉네임을 입력하고 <b>[모드 선택 입장하기]</b> 버튼을 누르면 확인 팝업 후 모드 선택 화면으로 이동합니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 2: MODE & STAGE SELECTION SCREEN (모드선택 및 스테이지 선택 화면) ==================== -->
+    <div id="mode-select-screen" class="hidden fixed inset-0 z-30 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden">
+        <div class="w-full max-w-6xl max-h-[96dvh] flex flex-col bg-slate-900/95 border-2 border-sky-500/40 rounded-3xl shadow-2xl overflow-hidden">
+            <!-- Top Banner -->
+            <div class="shrink-0 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-3.5 py-2 sm:px-6 sm:py-3 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-xl sm:text-2xl shadow-inner">
+                        🚀
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-400 text-slate-950 rounded-full">
+                                STEP 2 / 3 · 비행 모드 및 스테이지 선택
+                            </span>
+                            <span id="mode-screen-pilot-badge" class="inline-block px-2.5 py-0.5 text-[11px] font-black bg-emerald-400 text-slate-950 rounded-full">
+                                👨‍✈️ 조종사: -
+                            </span>
+                        </div>
+                        <h1 class="text-base sm:text-xl font-black tracking-tight text-white leading-tight mt-0.5">
+                            비행 훈련 코스 및 스테이지 선택
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button onclick="goToEntryScreen()" class="px-2.5 py-1.5 rounded-xl bg-slate-900/60 hover:bg-slate-900 text-sky-200 border border-sky-300/30 font-bold text-xs flex items-center gap-1 transition">
+                        🔄 닉네임 변경
+                    </button>
+                    <button onclick="toggleFullscreen()" class="btn-fullscreen-toggle px-2.5 py-1.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-black text-xs flex items-center gap-1 transition shadow">
+                        <span>⛶</span> <span class="fs-label">전체화면</span>
+                    </button>
+                    <button onclick="toggleAudio()" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center gap-1 transition">
+                        <span class="sound-icon-ui">🔊</span> <span class="sound-text-ui hidden sm:inline">효과음 켜짐</span>
+                    </button>
+                    <button onclick="openControlGuideModal()" class="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1 transition shadow">
                         🎮 조종법 안내
                     </button>
                 </div>
             </div>
 
             <!-- Main Content Grid (Landscape 12-Column Layout) -->
-            <div class="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-12 gap-3.5 items-stretch">
+            <div class="flex-1 overflow-y-auto p-2.5 sm:p-4 grid grid-cols-12 gap-3 items-stretch">
                 
-                <!-- Left Column: Pilot Registration & Mode Selection (8 cols in landscape) -->
-                <div class="col-span-12 lg:col-span-8 flex flex-col gap-3">
-                    
-                    <!-- Step 1: Pilot Nickname Input (Mandatory Validation) -->
-                    <div id="nickname-box" class="bg-slate-800/90 border-2 border-slate-700 rounded-2xl p-3 sm:p-4 transition-colors">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                            <label for="pilot-nickname" class="text-xs sm:text-sm font-extrabold text-sky-300 flex items-center gap-1.5">
-                                <span>👨‍✈️ STEP 1. 조종사 닉네임 등록 <span class="text-rose-400 font-black">(필수)</span></span>
-                            </label>
-                            <span id="current-pilot-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30">
-                                ⚠️ 미등록 (닉네임 확정 필요)
-                            </span>
-                        </div>
-                        <div class="flex gap-2">
-                            <input id="pilot-nickname" type="text" maxlength="12" placeholder="예: 5학년1반홍길동 / 드론에이스"
-                                class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border-2 border-slate-700 focus:border-sky-400 focus:outline-none text-white font-bold text-xs sm:text-sm placeholder-slate-500"
-                                oninput="onNicknameInputChange(this.value)"
-                                onkeydown="if(event.key==='Enter') requestNicknameConfirm()" />
-                            <button onclick="requestNicknameConfirm()" class="shrink-0 px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm transition shadow-lg shadow-sky-500/25">
-                                닉네임 등록
-                            </button>
-                        </div>
-                        <p id="nickname-helper" class="text-[11px] text-slate-400 mt-1.5">
-                            💡 닉네임을 입력하고 <b>[닉네임 등록]</b> 버튼을 눌러 확정해야 비행을 시작할 수 있습니다.
-                        </p>
-                    </div>
-
-                    <!-- Step 2: Mode Selection -->
+                <!-- Left Column: Mode & Stage Cards (8 cols in landscape) -->
+                <div class="col-span-12 lg:col-span-8 flex flex-col gap-2.5">
                     <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 sm:p-4 flex-1 flex flex-col justify-between gap-2.5">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <h2 class="text-xs sm:text-sm font-extrabold text-emerald-300 flex items-center gap-1.5">
-                                <span>🚀 STEP 2. 비행 모드 선택</span>
+                                <span>🛸 플레이할 비행 모드와 스테이지를 선택하세요</span>
                             </h2>
                             <span id="unlock-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-amber-300 border border-amber-400/30">
                                 🔒 1·2·3단계를 모두 완료하면 4·5단계 스페셜 미션이 열립니다!
                             </span>
                         </div>
 
-                        <!-- Free Practice Mode Card (Compact Horizontal Row) -->
+                        <!-- Free Practice Mode Card -->
                         <div class="p-3 rounded-xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-slate-900 border border-emerald-500/40 hover:border-emerald-400 transition flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
                             <div>
                                 <div class="flex items-center gap-2">
                                     <span class="px-2 py-0.5 text-[10px] font-black bg-emerald-400 text-slate-950 rounded">기초 입문</span>
-                                    <h3 class="text-sm font-black text-white">자유 연습 & 기초 5단계 튜토리얼</h3>
+                                    <h3 class="text-sm font-black text-white">자유 연습 모드 & 기초 5단계 튜토리얼</h3>
                                 </div>
                                 <p class="text-[11px] text-slate-300 mt-0.5">
-                                    이륙·호버링·이동·회전·착륙 훈련과 미사일 발사 연습을 자유롭게 진행해요!
+                                    이륙·호버링·이동·회전·착륙 훈련과 미사일 발사 연습을 시간 제한 없이 배워요!
                                 </p>
                             </div>
-                            <button onclick="startGameMode('practice', 0)" class="shrink-0 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md">
-                                연습 비행 출발 ✈️
+                            <button onclick="startGameMode('practice', 0)" class="shrink-0 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md">
+                                연습 비행 시작 ✈️
                             </button>
                         </div>
 
@@ -371,16 +461,25 @@
                 </div>
 
                 <!-- Right Column: Leaderboard & Quick Control Reference (4 cols in landscape) -->
-                <div class="col-span-12 lg:col-span-4 flex flex-col gap-3">
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-2.5">
                     <!-- Hall of Fame Leaderboard -->
-                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 sm:p-4 flex-1 flex flex-col min-h-[190px]">
-                        <div class="flex items-center justify-between mb-2">
+                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 flex-1 flex flex-col min-h-[175px]">
+                        <div class="flex items-center justify-between mb-1">
                             <h2 class="text-xs sm:text-sm font-extrabold text-amber-300 flex items-center gap-1.5">
-                                🏆 우리 반 드론 명예의 전당
+                                🏆 우리 반 실시간 공유 명예의 전당
                             </h2>
-                            <button onclick="clearRankings()" class="text-[11px] px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-200 hover:text-white font-bold transition">
-                                기록 초기화
-                            </button>
+                            <div class="flex items-center gap-1">
+                                <span id="cloud-sync-badge" class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-bold">
+                                    ☁️ 실시간 동기화 대기
+                                </span>
+                                <button onclick="clearRankings()" class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-200 hover:text-white font-bold transition">
+                                    초기화
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-1.5 px-2 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-1 text-[9px] text-slate-400">
+                            <span class="font-bold text-sky-400 shrink-0">접속 ID:</span>
+                            <span id="multiuser-id-display" class="font-mono text-slate-300 break-all text-right">연결 중...</span>
                         </div>
 
                         <!-- Filter Tabs (All + Stage 1~5) -->
@@ -394,30 +493,31 @@
                         </div>
 
                         <!-- Ranking List -->
-                        <div id="leaderboard-list" class="flex-1 overflow-y-auto max-h-44 space-y-1.5 pr-1">
+                        <div id="leaderboard-list" class="flex-1 overflow-y-auto max-h-40 space-y-1.5 pr-1">
                             <!-- Populated by JS -->
                         </div>
                     </div>
 
                     <!-- Mini Controls Box -->
-                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 text-[11px]">
-                        <div class="font-extrabold text-sky-300 mb-1.5 flex items-center justify-between">
-                            <span>🕹️ 드론 표준 조종법 (Mode 2) & 무장</span>
-                            <span class="text-[10px] text-amber-300 font-bold">Space : 미사일 발사 🚀</span>
+                    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-2.5 text-[11px]">
+                        <div class="font-extrabold text-sky-300 mb-1 flex flex-wrap items-center justify-between gap-1">
+                            <span>🕹️ 표준 조종법 (Mode 2)</span>
+                            <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                                <span class="text-cyan-300">Ctrl : 속도 1·2·3단 ⚡</span>
+                                <span class="text-amber-300">Space : 미사일 🚀</span>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="p-2 rounded-xl bg-slate-950/90 border border-sky-500/30">
-                                <div class="font-black text-sky-400 mb-0.5">왼쪽 스틱 (W·S·A·D)</div>
-                                <div class="text-slate-300 leading-snug">
-                                    • <b>W/S</b>: 고도 상승/하강<br>
-                                    • <b>A/D</b>: 기체 좌/우 회전
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <div class="p-1.5 rounded-xl bg-slate-950/90 border border-sky-500/30">
+                                <div class="font-black text-sky-400 text-[10px]">왼쪽 스틱 (W·S·A·D)</div>
+                                <div class="text-slate-300 text-[10px] leading-snug">
+                                    • <b>W/S</b>: 상승/하강 · <b>A/D</b>: 회전
                                 </div>
                             </div>
-                            <div class="p-2 rounded-xl bg-slate-950/90 border border-emerald-500/30">
-                                <div class="font-black text-emerald-400 mb-0.5">오른쪽 스틱 (방향키)</div>
-                                <div class="text-slate-300 leading-snug">
-                                    • <b>↑/↓</b>: 전진 / 후진<br>
-                                    • <b>←/→</b>: 좌/우 수평 이동
+                            <div class="p-1.5 rounded-xl bg-slate-950/90 border border-emerald-500/30">
+                                <div class="font-black text-emerald-400 text-[10px]">오른쪽 스틱 (방향키)</div>
+                                <div class="text-slate-300 text-[10px] leading-snug">
+                                    • <b>↑/↓</b>: 전진/후진 · <b>←/→</b>: 좌우
                                 </div>
                             </div>
                         </div>
@@ -428,64 +528,87 @@
         </div>
     </div>
 
-    <!-- ==================== IN-GAME HUD ==================== -->
-    <div id="hud-screen" class="hud-layer hidden flex flex-col justify-between p-2 sm:p-3.5 landscape-compact-pad">
-        
+    <!-- ==================== STEP 3: IN-GAME PLAY HUD (게임 플레이 화면) ==================== -->
+    <div id="hud-screen" class="hud-layer hidden flex flex-col justify-between p-1.5 sm:p-3 landscape-compact-pad">
         <!-- Top HUD Bar -->
-        <div class="w-full flex flex-wrap items-start justify-between gap-2">
+        <div class="w-full flex items-start justify-between gap-1.5 sm:gap-2">
             
             <!-- Left: Pilot Info & Durability HP -->
-            <div class="interactive-ui bg-slate-900/85 backdrop-blur-md border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 shadow-xl min-w-[210px] sm:min-w-[255px]">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <div class="flex items-center gap-1.5">
-                        <span class="px-2 py-0.5 text-[11px] font-black rounded-md bg-sky-500 text-slate-950" id="hud-mode-badge">자유 연습</span>
-                        <span class="font-black text-xs sm:text-sm text-white truncate max-w-[115px]" id="hud-pilot-name">홍길동</span>
+            <div class="interactive-ui bg-slate-900/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-2 sm:p-2.5 shadow-xl min-w-[180px] sm:min-w-[230px]">
+                <div class="flex items-center justify-between gap-1.5 mb-1">
+                    <div class="flex items-center gap-1">
+                        <span class="px-1.5 py-0.5 text-[10px] font-black rounded bg-sky-500 text-slate-950" id="hud-mode-badge">자유 연습</span>
+                        <span class="font-black text-xs text-white truncate max-w-[95px]" id="hud-pilot-name">홍길동</span>
                     </div>
                     <span class="text-xs font-extrabold text-amber-300" id="hud-score">0점</span>
                 </div>
 
                 <!-- Drone Durability Bar -->
-                <div class="space-y-1">
-                    <div class="flex items-center justify-between text-[11px]">
+                <div class="space-y-0.5">
+                    <div class="flex items-center justify-between text-[10px]">
                         <span class="font-bold text-slate-300 flex items-center gap-1">
-                            🛡️ 기체 내구도 <span id="hud-crash-count" class="text-[10px] text-slate-400">(충돌 0회)</span>
+                            🛡️ 내구도 <span id="hud-crash-count" class="text-[9px] text-slate-400">(충돌 0회)</span>
                         </span>
                         <span id="hud-hp-text" class="font-black text-emerald-400">100%</span>
                     </div>
-                    <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                    <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
                         <div id="hud-hp-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" style="width: 100%"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Center: Mission / Tutorial Banner -->
-            <div class="interactive-ui flex-1 max-w-xl mx-auto bg-slate-900/90 backdrop-blur-md border-2 border-sky-500/50 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xl text-center">
-                <div class="flex items-center justify-center gap-2 text-xs font-extrabold text-sky-300 mb-0.5">
-                    <span id="hud-mission-step">STEP 1 / 5</span>
-                    <span>•</span>
-                    <span id="hud-timer" class="text-amber-300 font-mono text-xs sm:text-sm">00:00.0</span>
+            <!-- Center: Collapsible Mission / Tutorial Explanation Popup & Minimized Bar -->
+            <div class="interactive-ui flex-1 max-w-lg mx-auto flex flex-col items-center">
+                <!-- Compact Bar (Always visible when explanation popup is closed so map is unobstructed) -->
+                <div id="hud-objective-minimized" class="hidden bg-slate-900/85 backdrop-blur-md border border-sky-400/50 rounded-full px-3 py-1 shadow-lg flex items-center gap-2 text-xs">
+                    <span id="hud-min-step" class="font-extrabold text-sky-300">STEP 1/5</span>
+                    <span class="text-slate-500">|</span>
+                    <span id="hud-min-timer" class="text-amber-300 font-mono font-bold">00:00.0</span>
+                    <button onclick="toggleMissionGuidePopup(true)" class="ml-1 px-2 py-0.5 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-[11px] transition">
+                        📖 설명 열기
+                    </button>
                 </div>
-                <div id="hud-objective-title" class="text-xs sm:text-sm font-black text-white">
-                    이륙 훈련: 왼쪽 스틱을 위로 밀어(W키) 고도 4m까지 상승하세요!
-                </div>
-                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-1.5 border border-slate-800">
-                    <div id="hud-progress-bar" class="h-full bg-sky-400 transition-all duration-300" style="width: 0%"></div>
+
+                <!-- Expanded Explanation Popup Card (Can be opened/closed anytime) -->
+                <div id="hud-objective-panel" class="w-full bg-slate-900/90 backdrop-blur-md border-2 border-sky-500/60 rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 shadow-2xl relative">
+                    <div class="flex items-center justify-between gap-2 text-[11px] font-extrabold text-sky-300 mb-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <span id="hud-mission-step">STEP 1 / 5</span>
+                            <span>•</span>
+                            <span id="hud-timer" class="text-amber-300 font-mono text-xs">00:00.0</span>
+                        </div>
+                        <button onclick="toggleMissionGuidePopup(false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-rose-500/80 text-slate-200 hover:text-white font-black text-[10px] transition flex items-center gap-1" title="설명창을 닫아 비행 맵 시야를 넓힙니다">
+                            ✕ 설명 닫기 (시야 확보)
+                        </button>
+                    </div>
+                    <div id="hud-objective-title" class="text-xs sm:text-sm font-black text-white leading-snug text-center">
+                        이륙 훈련: 왼쪽 스틱을 위로 밀어(W키) 고도 3.5m 이상 상승하세요!
+                    </div>
+                    <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-1 border border-slate-800">
+                        <div id="hud-progress-bar" class="h-full bg-sky-400 transition-all duration-300" style="width: 0%"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Right: Camera, Sound, Restart & Exit Buttons -->
-            <div class="interactive-ui flex items-center gap-1.5">
-                <button onclick="switchCameraMode()" class="px-2.5 py-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-xs font-extrabold text-sky-300 shadow-lg flex items-center gap-1 transition active:scale-95" title="카메라 시점 변경 (C키)">
-                    📷 <span id="hud-cam-label" class="hidden sm:inline">3인칭 추적</span>
+            <!-- Right: Fullscreen, Guide Popup Toggle, Camera, Sound, Restart & Mode Select -->
+            <div class="interactive-ui flex flex-wrap items-center justify-end gap-1">
+                <button onclick="toggleFullscreen()" class="btn-fullscreen-toggle px-2 py-1.5 rounded-xl bg-sky-500/90 hover:bg-sky-400 text-slate-950 font-black text-[11px] shadow-lg flex items-center gap-1 transition active:scale-95" title="전체화면 전환">
+                    <span>⛶</span> <span class="fs-label hidden md:inline">전체화면</span>
                 </button>
-                <button onclick="toggleAudio()" class="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-xs shadow-lg transition active:scale-95" id="hud-sound-btn" title="소리 켜기/끄기">
+                <button onclick="openControlGuideModal()" class="px-2 py-1.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-[11px] font-extrabold text-amber-300 shadow-lg flex items-center gap-1 transition active:scale-95" title="조종법 및 미션 설명 팝업 열기/닫기">
+                    🎮 <span class="hidden sm:inline">조종법</span>
+                </button>
+                <button onclick="switchCameraMode()" class="px-2 py-1.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-[11px] font-extrabold text-sky-300 shadow-lg flex items-center gap-1 transition active:scale-95" title="카메라 시점 변경 (C키)">
+                    📷 <span id="hud-cam-label" class="hidden xl:inline">3인칭 추적</span>
+                </button>
+                <button onclick="toggleAudio()" class="p-1.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-slate-700 text-xs shadow-lg transition active:scale-95" id="hud-sound-btn" title="소리 켜기/끄기">
                     🔊
                 </button>
-                <button onclick="restartCurrentMode()" class="px-2.5 py-2 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition active:scale-95" title="현재 코스 처음부터 다시 시작 (R키)">
-                    🔄 재시작
+                <button onclick="restartCurrentMode()" class="px-2 py-1.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 font-black text-[11px] shadow-lg transition active:scale-95" title="현재 코스 처음부터 다시 시작 (R키)">
+                    🔄 <span class="hidden sm:inline">재시작</span>
                 </button>
-                <button onclick="returnToLobby()" class="px-2.5 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-black text-xs shadow-lg transition active:scale-95">
-                    🏠 대기실
+                <button onclick="returnToLobby()" class="px-2 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-black text-[11px] shadow-lg transition active:scale-95" title="모드 및 스테이지 선택 화면으로 이동">
+                    📋 <span class="hidden sm:inline">모드선택</span>
                 </button>
             </div>
         </div>
@@ -494,9 +617,9 @@
         <div class="w-full flex-1 flex items-center justify-between pointer-events-none my-1 relative">
             
             <!-- Left Altitude & Speed Gauge -->
-            <div class="bg-slate-900/75 backdrop-blur border border-slate-700/80 rounded-2xl p-2 flex flex-col items-center gap-1 w-14 sm:w-16">
+            <div class="bg-slate-900/75 backdrop-blur border border-slate-700/80 rounded-2xl p-2 flex flex-col items-center gap-1 w-16 sm:w-20">
                 <div class="text-[10px] font-extrabold text-sky-300">고도(m)</div>
-                <div class="relative w-3.5 h-24 sm:h-28 bg-slate-950 rounded-full border border-slate-700 overflow-hidden flex flex-col justify-end p-0.5">
+                <div class="relative w-3.5 h-20 sm:h-24 bg-slate-950 rounded-full border border-slate-700 overflow-hidden flex flex-col justify-end p-0.5">
                     <div id="altitude-safe-zone" class="w-full bg-emerald-400/20 absolute left-0" style="bottom: 15%; height: 45%;"></div>
                     <div id="hud-altitude-fill" class="w-full bg-gradient-to-t from-sky-500 to-cyan-300 rounded-full transition-all duration-75" style="height: 0%"></div>
                 </div>
@@ -504,6 +627,9 @@
                 <div class="w-full border-t border-slate-700/80 pt-1 text-center">
                     <div class="text-[9px] font-bold text-emerald-300">속력</div>
                     <div id="hud-speed-val" class="text-[11px] font-black text-white font-mono">0km/h</div>
+                    <div id="hud-speed-gear-badge" class="mt-0.5 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-[9px] font-black text-sky-300">
+                        ⚡ 2단 표준
+                    </div>
                 </div>
             </div>
 
@@ -541,11 +667,16 @@
                 </div>
             </div>
 
-            <!-- Center Bottom: Missile Fire Button + Hover Brake + Keyboard Visualizer -->
+            <!-- Center Bottom: Speed Control + Missile Fire Button + Hover Brake + Keyboard Visualizer -->
             <div class="flex flex-col items-center gap-1.5 interactive-ui">
                 <!-- Action Buttons Row (Works on Mobile, Tablet & PC) -->
-                <div class="flex items-center gap-2">
-                    <button onclick="firePlayerMissile()" class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 active:scale-95 text-white font-black text-xs sm:text-sm shadow-lg shadow-rose-500/40 border-2 border-rose-300 flex items-center gap-1.5 transition">
+                <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                    <button id="btn-speed-control" onclick="cycleDroneSpeed()" class="px-3 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/30 border-2 border-cyan-200 flex items-center gap-1.5 transition" title="드론 비행 속도 1단/2단/3단 전환 (단축키: Ctrl)">
+                        <span>⚡</span>
+                        <span id="hud-speed-btn-label">속도 2단(표준)</span>
+                        <span class="hidden sm:inline text-[10px] bg-black/20 text-white px-1.5 py-0.5 rounded">(Ctrl)</span>
+                    </button>
+                    <button onclick="firePlayerMissile()" class="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 active:scale-95 text-white font-black text-xs sm:text-sm shadow-lg shadow-rose-500/40 border-2 border-rose-300 flex items-center gap-1.5 transition">
                         🚀 미사일 발사 <span class="hidden sm:inline text-[11px] bg-black/30 px-1.5 py-0.5 rounded">(Space)</span>
                     </button>
                     <button onclick="emergencyLand()" class="px-3 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-1 transition">
@@ -554,7 +685,7 @@
                 </div>
 
                 <!-- Keyboard Visual Helper (Desktop/Landscape Tablet) -->
-                <div class="hidden lg:flex items-center gap-5 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-2xl">
+                <div class="hidden lg:flex items-center gap-4 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-2xl">
                     <!-- WASD Visualizer -->
                     <div class="flex items-center gap-2">
                         <div class="flex flex-col items-center gap-0.5">
@@ -566,6 +697,18 @@
                             </div>
                         </div>
                         <span class="text-[10px] text-sky-300 font-bold">고도/회전</span>
+                    </div>
+                    <!-- Speed Ctrl Visualizer -->
+                    <div class="flex items-center gap-1.5 border-x border-slate-700/80 px-3">
+                        <span id="key-ctrl" class="key-badge px-2">Ctrl</span>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] text-cyan-300 font-black">속도 조절</span>
+                            <div class="flex gap-0.5 mt-0.5">
+                                <span id="speed-dot-1" class="w-2.5 h-1.5 rounded-sm bg-cyan-400"></span>
+                                <span id="speed-dot-2" class="w-2.5 h-1.5 rounded-sm bg-cyan-400"></span>
+                                <span id="speed-dot-3" class="w-2.5 h-1.5 rounded-sm bg-slate-700"></span>
+                            </div>
+                        </div>
                     </div>
                     <!-- Arrow Keys Visualizer -->
                     <div class="flex items-center gap-2">
@@ -737,7 +880,8 @@
                 </div>
             </div>
             <div class="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-xs sm:text-sm text-amber-200 space-y-1">
-                <div class="font-black text-amber-300">⚠️ 드론 파손 및 미사일 교전 안내</div>
+                <div class="font-black text-amber-300">⚠️ 드론 속도 조절(1·2·3단) 및 미사일 교전 안내</div>
+                <p>• <b>드론 속도 조절 (Ctrl키 또는 ⚡속도 버튼):</b> <b>1단(저속·정밀)</b> → <b>2단(표준 비행)</b> → <b>3단(고속 부스터)</b>으로 속도를 실시간 변경할 수 있습니다.</p>
                 <p>• 비행 중 <b>나무, 바위, 훌라후프 테두리, 날아오는 적 미사일</b>에 부딪히면 기체 내구도가 깎입니다.</p>
                 <p>• <b>미사일 발사 (Space 또는 발사 버튼):</b> 드론이 현재 바라보는 방향과 현재 고도로 미사일이 발사됩니다.</p>
                 <p>• <b>부위별 피격 판정:</b> 적 드론의 <b>정중앙 코어</b>를 맞히면 단 한 발에 <b>즉시 격추(100% 피해)</b>되며, <b>주변부(프로펠러 가드)</b>를 맞히면 50% 피해를 주어 추가 공격이 필요합니다.</p>
@@ -752,20 +896,64 @@
 
     <script>
         /***********************************************************************
-         * 1. STATE & STORAGE MANAGEMENT
-         * - 새로고침 시 모든 내용이 초기화되도록 페이지 로드 시 로컬스토리지를 초기화하고,
-         *   세션 중에는 로컬스토리지에 학생들의 랭킹 기록을 저장·정렬합니다.
+         * 1. STATE & MULTI-USER STORAGE MANAGEMENT (LOCALSTORAGE + CLOUD SYNC)
+         * - 동시 다중 접속 시 충돌 방지를 위해 고유 세션/레코드 ID를 부여합니다.
+         * - 로컬스토리지(localStorage)와 클라우드(Firestore) 양쪽에 점수를 저장하고
+         *   실시간으로 병합하여 모든 학생이 점수판을 함께 공유할 수 있습니다.
          ***********************************************************************/
         const STORAGE_KEY = 'DRONE_CLASSROOM_RANKINGS_V1';
+        const SESSION_CLIENT_ID = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'client-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
 
-        // 새로고침 시 초기화 요구사항 반영: 페이지 최초 로드 시 이전 로컬스토리지 데이터 초기화
+        // 새로고침 시 로컬 캐시 초기화 (클라우드에서 최신 실시간 공유 랭킹을 다시 수신)
         try {
             localStorage.removeItem(STORAGE_KEY);
         } catch (e) {
             console.warn('localStorage access warning:', e);
         }
 
+        // 1/2/3단 드론 속도 기어 설정값
+        const SPEED_GEAR_CONFIG = {
+            1: {
+                level: 1,
+                name: '1단(저속·정밀)',
+                shortName: '⚡ 1단 저속',
+                moveAccel: 17.0,
+                verticalAccel: 15.0,
+                yawSpeed: 1.45,
+                tiltMax: 0.22,
+                btnClass: 'px-3 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 border-2 border-emerald-200 flex items-center gap-1.5 transition',
+                badgeClass: 'mt-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black text-emerald-300'
+            },
+            2: {
+                level: 2,
+                name: '2단(표준)',
+                shortName: '⚡ 2단 표준',
+                moveAccel: 28.0,
+                verticalAccel: 22.0,
+                yawSpeed: 2.1,
+                tiltMax: 0.32,
+                btnClass: 'px-3 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/30 border-2 border-cyan-200 flex items-center gap-1.5 transition',
+                badgeClass: 'mt-0.5 px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 text-[9px] font-black text-sky-300'
+            },
+            3: {
+                level: 3,
+                name: '3단(고속·부스터)',
+                shortName: '🔥 3단 고속',
+                moveAccel: 42.0,
+                verticalAccel: 30.0,
+                yawSpeed: 2.75,
+                tiltMax: 0.44,
+                btnClass: 'px-3 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/40 border-2 border-amber-200 flex items-center gap-1.5 transition',
+                badgeClass: 'mt-0.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-[9px] font-black text-amber-300'
+            }
+        };
+
         const appState = {
+            userId: SESSION_CLIENT_ID,
+            cloudConnected: false,
+            cloudRankings: [],
             pilotName: '',
             pilotConfirmed: false,
             pendingNickname: '',
@@ -774,6 +962,7 @@
             pilotProgressMap: {}, // Tracks cleared stages per pilot nickname
             mode: 'lobby', // 'lobby', 'practice', 'mission'
             stage: 0,      // 0: practice, 1: Hoop, 2: Slalom, 3: Race, 4: Missile Evade, 5: Drone Combat
+            speedLevel: 2, // 1: Slow/Precision, 2: Normal, 3: Fast/Booster
             rankFilter: 'ALL',
             audioEnabled: true,
             cameraMode: 0, // 0: Chase Cam, 1: FPV Cam, 2: High Angle Cam
@@ -794,6 +983,54 @@
             totalEnemies: 0,
             lastFireTime: 0
         };
+
+        function updateSpeedUI() {
+            const cfg = SPEED_GEAR_CONFIG[appState.speedLevel] || SPEED_GEAR_CONFIG[2];
+            const btn = document.getElementById('btn-speed-control');
+            const btnLabel = document.getElementById('hud-speed-btn-label');
+            const gearBadge = document.getElementById('hud-speed-gear-badge');
+
+            if (btn) btn.className = cfg.btnClass;
+            if (btnLabel) btnLabel.textContent = `속도 ${cfg.name}`;
+            if (gearBadge) {
+                gearBadge.className = cfg.badgeClass;
+                gearBadge.textContent = cfg.shortName;
+            }
+
+            [1, 2, 3].forEach(lvl => {
+                const dot = document.getElementById(`speed-dot-${lvl}`);
+                if (!dot) return;
+                if (lvl <= appState.speedLevel) {
+                    dot.className = appState.speedLevel === 3
+                        ? 'w-2.5 h-1.5 rounded-sm bg-amber-400'
+                        : appState.speedLevel === 1
+                        ? 'w-2.5 h-1.5 rounded-sm bg-emerald-400'
+                        : 'w-2.5 h-1.5 rounded-sm bg-cyan-400';
+                } else {
+                    dot.className = 'w-2.5 h-1.5 rounded-sm bg-slate-700';
+                }
+            });
+        }
+
+        function cycleDroneSpeed(targetLevel = null) {
+            if (targetLevel && SPEED_GEAR_CONFIG[targetLevel]) {
+                appState.speedLevel = targetLevel;
+            } else {
+                appState.speedLevel = (appState.speedLevel % 3) + 1;
+            }
+            updateSpeedUI();
+            playSoundEffect('click');
+
+            const cfg = SPEED_GEAR_CONFIG[appState.speedLevel];
+            if (appState.mode !== 'lobby') {
+                const borderColor = appState.speedLevel === 3
+                    ? 'border-amber-400'
+                    : appState.speedLevel === 1
+                    ? 'border-emerald-400'
+                    : 'border-cyan-400';
+                showToast(`⚡ 드론 비행 속도 변경: ${cfg.name}`, borderColor);
+            }
+        }
 
         // Drone Physics & Durability State
         const droneState = {
@@ -975,48 +1212,173 @@
             appState.audioEnabled = !appState.audioEnabled;
             const icon = appState.audioEnabled ? '🔊' : '🔇';
             const text = appState.audioEnabled ? '효과음 켜짐' : '효과음 꺼짐';
-            document.getElementById('lobby-sound-icon').textContent = icon;
-            document.getElementById('lobby-sound-text').textContent = text;
-            document.getElementById('hud-sound-btn').textContent = icon;
+            document.querySelectorAll('.sound-icon-ui').forEach(el => el.textContent = icon);
+            document.querySelectorAll('.sound-text-ui').forEach(el => el.textContent = text);
+            const hudSoundBtn = document.getElementById('hud-sound-btn');
+            if (hudSoundBtn) hudSoundBtn.textContent = icon;
             if (appState.audioEnabled) playSoundEffect('click');
             updateMotorSound();
         }
 
+        function toggleFullscreen() {
+            playSoundEffect('click');
+            const docEl = document.documentElement;
+            const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+
+            if (!isFs) {
+                const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+                if (req) {
+                    req.call(docEl).catch(() => {
+                        showToast('📺 브라우저 전체화면 제한 환경입니다. 가로 화면에 맞춰 자동 최적화되었습니다!', 'border-sky-400');
+                    });
+                } else {
+                    showToast('📺 현재 기기에서 전체화면이 자동 적용되었습니다!', 'border-sky-400');
+                }
+            } else {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+                if (exit) {
+                    exit.call(document).catch(() => {});
+                }
+            }
+        }
+
+        function updateFullscreenButtons() {
+            const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            document.querySelectorAll('.fs-label').forEach(el => {
+                el.textContent = isFs ? '전체화면 종료' : '전체화면';
+            });
+        }
+        document.addEventListener('fullscreenchange', updateFullscreenButtons);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
+
+        function toggleMissionGuidePopup(showExpand) {
+            playSoundEffect('click');
+            const panel = document.getElementById('hud-objective-panel');
+            const minBar = document.getElementById('hud-objective-minimized');
+            if (!panel || !minBar) return;
+
+            if (showExpand) {
+                panel.classList.remove('hidden');
+                minBar.classList.add('hidden');
+            } else {
+                panel.classList.add('hidden');
+                minBar.classList.remove('hidden');
+            }
+        }
+
+        function goToEntryScreen() {
+            playSoundEffect('click');
+            appState.mode = 'lobby';
+            appState.isPaused = false;
+            updateMotorSound();
+            closeAllModals();
+            document.getElementById('hud-screen').classList.add('hidden');
+            document.getElementById('mode-select-screen').classList.add('hidden');
+            document.getElementById('entry-screen').classList.remove('hidden');
+            const input = document.getElementById('pilot-nickname');
+            if (input) input.focus();
+        }
+
         /***********************************************************************
-         * 3. NICKNAME & LOCALSTORAGE LEADERBOARD
+         * 3. NICKNAME & DUAL LEADERBOARD (LOCALSTORAGE + CLOUD)
          ***********************************************************************/
-        function loadRankings() {
+        function loadLocalRankings() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : [];
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
             } catch (e) {
                 return [];
             }
         }
 
+        function getMergedRankings() {
+            const localList = loadLocalRankings();
+            const cloudList = Array.isArray(appState.cloudRankings) ? appState.cloudRankings : [];
+            const map = new Map();
+
+            // Merge by unique recordId so simultaneous records from multiple users never conflict
+            [...localList, ...cloudList].forEach(item => {
+                if (!item || typeof item !== 'object') return;
+                const key = item.recordId || `${item.userId || 'anon'}_${item.name}_${item.modeKey}_${item.score}_${item.time}`;
+                map.set(key, item);
+            });
+
+            const merged = Array.from(map.values());
+            merged.sort((a, b) => {
+                if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+                return (a.time || 0) - (b.time || 0);
+            });
+            return merged.slice(0, 50);
+        }
+
         function saveRankingRecord(record) {
+            const enrichedRecord = {
+                recordId: (typeof crypto !== 'undefined' && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : 'rec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
+                userId: appState.userId || SESSION_CLIENT_ID,
+                name: String(record.name || '익명 파일럿').slice(0, 16),
+                modeKey: String(record.modeKey || 'PRACTICE'),
+                modeLabel: String(record.modeLabel || '자유연습'),
+                score: Number(record.score) || 0,
+                time: Number(record.time) || 0,
+                hp: Number(record.hp) || 0,
+                createdAt: Date.now()
+            };
+
+            // 1. Save to localStorage
             try {
-                const list = loadRankings();
-                list.push(record);
-                // Sort by Score DESC, then Time ASC
+                const list = loadLocalRankings();
+                list.push(enrichedRecord);
                 list.sort((a, b) => {
                     if (b.score !== a.score) return b.score - a.score;
                     return a.time - b.time;
                 });
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
-                renderLeaderboard();
             } catch (e) {
-                console.warn('Could not save ranking:', e);
+                console.warn('Could not save ranking to localStorage:', e);
             }
+
+            // 2. Save to Cloud Firestore so all connected players share the scoreboard
+            if (window.cloudRankingBridge && typeof window.cloudRankingBridge.saveScoreToCloud === 'function') {
+                window.cloudRankingBridge.saveScoreToCloud(enrichedRecord);
+            }
+
+            renderLeaderboard();
         }
 
         function clearRankings() {
             try {
                 localStorage.removeItem(STORAGE_KEY);
             } catch (e) {}
+            if (window.cloudRankingBridge && typeof window.cloudRankingBridge.clearCloudScores === 'function') {
+                window.cloudRankingBridge.clearCloudScores();
+            }
             playSoundEffect('click');
             renderLeaderboard();
         }
+
+        function updateCloudStatusUI(isConnected, fullUserId) {
+            appState.cloudConnected = isConnected;
+            if (fullUserId) appState.userId = fullUserId;
+
+            const badge = document.getElementById('cloud-sync-badge');
+            const idEl = document.getElementById('multiuser-id-display');
+            if (idEl) {
+                idEl.textContent = appState.userId;
+            }
+            if (badge) {
+                if (isConnected) {
+                    badge.textContent = '☁️ 실시간 공유 중';
+                    badge.className = 'text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-bold';
+                } else {
+                    badge.textContent = '💾 로컬 저장 모드';
+                    badge.className = 'text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 font-bold';
+                }
+            }
+        }
+        window.updateCloudStatusUI = updateCloudStatusUI;
 
         function setRankFilter(filter) {
             appState.rankFilter = filter;
@@ -1034,7 +1396,8 @@
 
         function renderLeaderboard() {
             const container = document.getElementById('leaderboard-list');
-            const allRecords = loadRankings();
+            if (!container) return;
+            const allRecords = getMergedRankings();
             const filtered = allRecords.filter(item => {
                 if (appState.rankFilter === 'ALL') return true;
                 return item.modeKey === appState.rankFilter;
@@ -1053,6 +1416,7 @@
 
             container.innerHTML = filtered.map((rec, idx) => {
                 const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}위`;
+                const isMe = rec.userId && rec.userId === appState.userId;
                 const badgeColor = rec.modeKey === 'STAGE5'
                     ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30'
                     : rec.modeKey === 'STAGE4'
@@ -1066,25 +1430,29 @@
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
 
                 return `
-                    <div class="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs">
+                    <div class="flex items-center justify-between px-2.5 py-1.5 rounded-xl ${isMe ? 'bg-sky-950/70 border-sky-500/50' : 'bg-slate-950/90 border-slate-800'} border text-xs">
                         <div class="flex items-center gap-2 min-w-0">
                             <span class="font-black w-6 text-center ${idx < 3 ? 'text-sm' : 'text-slate-400'}">${medal}</span>
                             <div class="truncate">
-                                <div class="font-black text-white truncate">${escapeHtml(rec.name)}</div>
+                                <div class="font-black text-white truncate flex items-center gap-1">
+                                    <span>${escapeHtml(rec.name)}</span>
+                                    ${isMe ? '<span class="px-1 py-0.2 text-[8px] rounded bg-sky-500 text-slate-950 font-black">나</span>' : ''}
+                                </div>
                                 <div class="flex items-center gap-1.5 mt-0.5">
-                                    <span class="px-1.5 py-0.2 rounded border text-[9px] font-bold ${badgeColor}">${rec.modeLabel}</span>
+                                    <span class="px-1.5 py-0.2 rounded border text-[9px] font-bold ${badgeColor}">${escapeHtml(rec.modeLabel)}</span>
                                     <span class="text-[10px] text-slate-400 font-mono">${formatTime(rec.time)}</span>
                                 </div>
                             </div>
                         </div>
                         <div class="text-right shrink-0">
-                            <div class="font-black text-amber-400 text-xs sm:text-sm">${rec.score.toLocaleString()}점</div>
+                            <div class="font-black text-amber-400 text-xs sm:text-sm">${Number(rec.score).toLocaleString()}점</div>
                             <div class="text-[10px] text-emerald-400">내구도 ${rec.hp}%</div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
+        window.renderLeaderboard = renderLeaderboard;
 
         function escapeHtml(str) {
             return String(str).replace(/[&<>"']/g, s => ({
@@ -1205,17 +1573,27 @@
 
             badge.textContent = `✅ 확정됨: ${name}`;
             badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
-            box.className = 'bg-slate-800/90 border-2 border-emerald-500/50 rounded-2xl p-3 sm:p-4 transition-colors';
-            helper.textContent = `✅ [${name}] 조종사 등록이 확정되었습니다! 원하는 비행 모드를 선택해 출발하세요.`;
-            helper.className = 'text-[11px] text-emerald-400 font-bold mt-1.5';
+            box.className = 'col-span-12 md:col-span-7 bg-slate-800/90 border-2 border-emerald-500/50 rounded-2xl p-4 sm:p-6 flex flex-col justify-center gap-3 h-full transition-colors';
+            helper.textContent = `✅ [${name}] 조종사 등록이 확정되었습니다!`;
+            helper.className = 'text-xs text-emerald-400 font-bold mt-1';
+
+            const modePilotBadge = document.getElementById('mode-screen-pilot-badge');
+            if (modePilotBadge) {
+                modePilotBadge.textContent = `👨‍✈️ 조종사: ${name}`;
+            }
 
             document.getElementById('nickname-confirm-modal').classList.add('hidden');
             document.getElementById('modal-backdrop').classList.add('hidden');
 
+            // Step 1 -> Step 2 Screen Transition (Entry Screen -> Mode Select Screen)
+            document.getElementById('entry-screen').classList.add('hidden');
+            document.getElementById('mode-select-screen').classList.remove('hidden');
+
             playSoundEffect('ring');
             updateStageUnlockUI();
+            renderLeaderboard();
 
-            // If triggered by clicking a mode button, launch it after confirmation
+            // If triggered by a pending start request, launch it after confirmation
             if (appState.pendingStartRequest) {
                 const req = appState.pendingStartRequest;
                 appState.pendingStartRequest = null;
@@ -2017,7 +2395,10 @@
                 }
                 controlInput.keys[code] = true;
 
-                if (code === 'Space' && appState.mode !== 'lobby') {
+                if ((code === 'ControlLeft' || code === 'ControlRight' || e.key === 'Control') && !e.repeat) {
+                    e.preventDefault();
+                    cycleDroneSpeed();
+                } else if (code === 'Space' && appState.mode !== 'lobby') {
                     firePlayerMissile();
                 } else if ((code === 'ShiftLeft' || code === 'ShiftRight') && appState.mode !== 'lobby') {
                     emergencyLand();
@@ -2107,6 +2488,7 @@
             toggleKeyBadge('key-s', k['KeyS']);
             toggleKeyBadge('key-a', k['KeyA']);
             toggleKeyBadge('key-d', k['KeyD']);
+            toggleKeyBadge('key-ctrl', k['ControlLeft'] || k['ControlRight']);
             toggleKeyBadge('key-up', k['ArrowUp']);
             toggleKeyBadge('key-down', k['ArrowDown']);
             toggleKeyBadge('key-left', k['ArrowLeft']);
@@ -2168,21 +2550,22 @@
             if (appState.mode === 'lobby' || appState.isPaused) return;
 
             const ctrl = getCombinedControls();
+            const speedCfg = SPEED_GEAR_CONFIG[appState.speedLevel] || SPEED_GEAR_CONFIG[2];
 
-            // 1. Yaw (Left Stick X)
-            const yawSpeed = 2.1;
+            // 1. Yaw (Left Stick X) scaled by current speed gear
+            const yawSpeed = speedCfg.yawSpeed;
             droneState.yaw -= ctrl.yaw * yawSpeed * dt;
             if (appState.mode === 'practice' && appState.tutorialStep === 4) {
                 appState.yawAccumulated += Math.abs(ctrl.yaw * yawSpeed * dt);
             }
 
-            // 2. Vertical Throttle (Left Stick Y)
-            const verticalAccel = 22.0;
+            // 2. Vertical Throttle (Left Stick Y) scaled by current speed gear
+            const verticalAccel = speedCfg.verticalAccel;
             droneState.vel.y += ctrl.throttle * verticalAccel * dt;
             droneState.vel.y *= Math.pow(0.04, dt); // Vertical air damping (auto-hover when stick released)
 
             // 3. Forward/Backward Pitch & Left/Right Roll relative to Drone Heading
-            const moveAccel = 28.0;
+            const moveAccel = speedCfg.moveAccel;
             const forwardDir = new THREE.Vector3(-Math.sin(droneState.yaw), 0, -Math.cos(droneState.yaw));
             const rightDir = new THREE.Vector3(Math.cos(droneState.yaw), 0, -Math.sin(droneState.yaw));
 
@@ -2213,9 +2596,9 @@
             droneState.pos.x = Math.max(-95, Math.min(95, droneState.pos.x));
             droneState.pos.z = Math.max(-200, Math.min(45, droneState.pos.z));
 
-            // Smooth Visual Pitch/Roll Tilt
-            const targetPitchTilt = -ctrl.pitch * 0.32;
-            const targetRollTilt = -ctrl.roll * 0.32;
+            // Smooth Visual Pitch/Roll Tilt scaled by speed gear
+            const targetPitchTilt = -ctrl.pitch * speedCfg.tiltMax;
+            const targetRollTilt = -ctrl.roll * speedCfg.tiltMax;
             droneState.pitchTilt += (targetPitchTilt - droneState.pitchTilt) * 10 * dt;
             droneState.rollTilt += (targetRollTilt - droneState.rollTilt) * 10 * dt;
 
@@ -3031,12 +3414,20 @@
             const dist = Math.round(droneState.pos.distanceTo(targetPos));
             document.getElementById('hud-target-dist').textContent = `목표 거리: ${dist}m`;
 
+            let timeText = '';
             if (appState.mode === 'mission') {
                 const rem = Math.max(0, appState.timeLimit - appState.elapsedTime);
-                document.getElementById('hud-timer').textContent = `남은시간 ${formatTime(rem)}`;
+                timeText = `남은시간 ${formatTime(rem)}`;
             } else {
-                document.getElementById('hud-timer').textContent = formatTime(appState.elapsedTime);
+                timeText = formatTime(appState.elapsedTime);
             }
+            document.getElementById('hud-timer').textContent = timeText;
+
+            const minTimer = document.getElementById('hud-min-timer');
+            const minStep = document.getElementById('hud-min-step');
+            const fullStep = document.getElementById('hud-mission-step');
+            if (minTimer) minTimer.textContent = timeText;
+            if (minStep && fullStep) minStep.textContent = fullStep.textContent;
         }
 
         function formatTime(sec) {
@@ -3109,8 +3500,10 @@
             resetDronePhysics();
             buildEnvironment(mode, stage);
 
-            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('entry-screen').classList.add('hidden');
+            document.getElementById('mode-select-screen').classList.add('hidden');
             document.getElementById('hud-screen').classList.remove('hidden');
+            toggleMissionGuidePopup(true);
             closeAllModals();
 
             document.getElementById('hud-pilot-name').textContent = appState.pilotName;
@@ -3158,16 +3551,30 @@
             updateMotorSound();
             closeAllModals();
             document.getElementById('hud-screen').classList.add('hidden');
-            document.getElementById('lobby-screen').classList.remove('hidden');
+            if (appState.pilotConfirmed && appState.pilotName) {
+                document.getElementById('entry-screen').classList.add('hidden');
+                document.getElementById('mode-select-screen').classList.remove('hidden');
+            } else {
+                document.getElementById('mode-select-screen').classList.add('hidden');
+                document.getElementById('entry-screen').classList.remove('hidden');
+            }
             renderLeaderboard();
         }
 
         function openControlGuideModal() {
             playSoundEffect('click');
+            const guideModal = document.getElementById('guide-modal');
+            const isCurrentlyOpen = !guideModal.classList.contains('hidden');
+            if (isCurrentlyOpen) {
+                closeAllModals();
+                return;
+            }
             document.getElementById('modal-backdrop').classList.remove('hidden');
-            document.getElementById('guide-modal').classList.remove('hidden');
+            guideModal.classList.remove('hidden');
             document.getElementById('crash-modal').classList.add('hidden');
             document.getElementById('clear-modal').classList.add('hidden');
+            document.getElementById('nickname-confirm-modal').classList.add('hidden');
+            document.getElementById('notice-modal').classList.add('hidden');
         }
 
         function closeAllModals() {
@@ -3208,11 +3615,122 @@
         window.onload = function () {
             initThreeScene();
             initInputControllers();
+            updateSpeedUI();
+            updateCloudStatusUI(false, SESSION_CLIENT_ID);
             renderLeaderboard();
             updateStageUnlockUI();
             lastFrameTime = performance.now();
             animateLoop(lastFrameTime);
         };
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const COLLECTION_NAME = 'drone_rankings';
+
+        async function initCloudLeaderboard() {
+            try {
+                if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                    return;
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // RULE 3 - Auth Before Queries
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                if (!currentUser) return;
+
+                if (typeof window.updateCloudStatusUI === 'function') {
+                    window.updateCloudStatusUI(true, currentUser.uid);
+                }
+
+                // RULE 1 & RULE 2 - Strict Public Path & Simple Collection Query
+                const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
+
+                onSnapshot(
+                    rankingsRef,
+                    (snapshot) => {
+                        const cloudList = [];
+                        snapshot.forEach((docSnap) => {
+                            const data = docSnap.data();
+                            if (data && data.name && typeof data.score === 'number') {
+                                cloudList.push({
+                                    ...data,
+                                    recordId: data.recordId || docSnap.id
+                                });
+                            }
+                        });
+                        appState.cloudRankings = cloudList;
+
+                        // Sync cloud rankings to localStorage as well so both remain identical
+                        try {
+                            const merged = getMergedRankings();
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                        } catch (err) {}
+
+                        if (typeof window.renderLeaderboard === 'function') {
+                            window.renderLeaderboard();
+                        }
+                    },
+                    (error) => {
+                        console.warn('Cloud leaderboard listener warning:', error);
+                        if (typeof window.updateCloudStatusUI === 'function') {
+                            window.updateCloudStatusUI(false, currentUser?.uid || SESSION_CLIENT_ID);
+                        }
+                    }
+                );
+            } catch (err) {
+                console.warn('Cloud initialization fallback to local mode:', err);
+            }
+        }
+
+        window.cloudRankingBridge = {
+            saveScoreToCloud: async (record) => {
+                if (!db || !currentUser) return;
+                try {
+                    const docId = record.recordId || crypto.randomUUID();
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, docId);
+                    await setDoc(docRef, {
+                        ...record,
+                        recordId: docId,
+                        userId: currentUser.uid
+                    });
+                } catch (err) {
+                    console.warn('Cloud score save error:', err);
+                }
+            },
+            clearCloudScores: async () => {
+                if (!db || !currentUser) return;
+                try {
+                    const rankingsRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
+                    const snap = await getDocs(rankingsRef);
+                    const deletions = [];
+                    snap.forEach((d) => {
+                        deletions.push(deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, d.id)));
+                    });
+                    await Promise.all(deletions);
+                } catch (err) {
+                    console.warn('Cloud score clear error:', err);
+                }
+            }
+        };
+
+        initCloudLeaderboard();
     </script>
 </body>
 </html>
